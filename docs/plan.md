@@ -77,9 +77,11 @@ in the sources named above.
    control rate, with no output. Its inputs are `replyRate`, `peakLag`,
    `replyID`, the count n, the n signals, the size of the command name,
    and its characters.
-8. For 2 channels, the 25 core definitions take 31,249 bytes. The largest
-   takes 3,461 bytes and 10 wire buffers. For 4 channels, the largest
-   takes 5,080 bytes and 11 wire buffers.
+8. With the `CombL` delay, the 25 core definitions of 2 channels take
+   31,265 bytes as files of their own. `dirt_leslie2` is the largest, with
+   3,461 bytes and 10 wire buffers. For 4 channels, `dirt_reverb4` is the
+   largest, with 5,080 bytes, and `dirt_leslie4` needs the most wire
+   buffers, 11.
 9. `DirtEvent` sends its messages inside `server.makeBundle(~latency, …)`.
    A sound with a `cut` that is not 0 sends two bundles: `/error -1` and
    the `cut_gate` sets, then the sound.
@@ -381,7 +383,8 @@ count. Their names keep the form of SuperDirt: `dirt_gate2`,
   `dirt_delay`.
 - The script also writes `tests/fixtures/vowels.json`. For each of the 5
   registers and the 5 vowels, it holds the frequencies, the amps and the
-  rqs.
+  rqs. The test of the vowel table compares each number as an f32, the
+  type of a control value on the wire.
 - `generator/events.scd` writes `tests/fixtures/events.json`. For each
   scenario, it holds the sounds, and the bundles that SuperDirt sent for
   each sound. Every bundle stays apart, with its time. A class of
@@ -448,12 +451,12 @@ steps are on `feat/core`.
 
 | Step | Content | State |
 | --- | --- | --- |
-| 1 | The scaffold | in work |
-| 2 | The generator of the definitions, and its golden files | |
-| 3 | `DirtPan`, `DirtGateCutGroup`, `DirtPause`, `dirt_gate`, `dirt_out` | |
-| 4 | The sample players | |
+| 1 | The scaffold | done |
+| 2 | The generator of the definitions, and its golden files | done |
+| 3 | `DirtGateCutGroup`, `dirt_gate`, `dirt_out`, and the test of byte equality | |
+| 4 | `DirtPan`, and the sample players | |
 | 5 | The 12 event effects, and the vowel table | |
-| 6 | The 5 global definitions, and `synthdefs::core` | |
+| 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | |
 | 7 | `Sound` | |
 | 8 | `Library`, and the `fs` helper | |
 | 9 | The generator of the events, and its golden file | |

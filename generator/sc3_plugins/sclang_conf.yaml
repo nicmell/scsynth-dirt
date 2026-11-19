@@ -1,0 +1,13 @@
+# The core class library of SuperCollider 3.14.1, the classes of SuperDirt,
+# the Vowel quark and the folder SC3plugins of the Extensions, without the
+# other extensions and without other quarks:
+# `sclang -l "$PWD/generator/sc3_plugins/sclang_conf.yaml" <script>`.
+includePaths:
+    -   /Applications/SuperCollider.app/Contents/Resources/SCClassLibrary
+    -   /Users/nick/Projects/SuperDirt/classes
+    -   /Users/nick/Projects/Vowel
+    -   /Users/nick/Library/Application Support/SuperCollider/Extensions/SC3plugins
+excludePaths:
+    []
+postInlineWarnings: false
+excludeDefaultPaths: true
