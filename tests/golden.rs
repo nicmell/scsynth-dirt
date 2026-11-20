@@ -54,7 +54,7 @@ const CORE_STEMS: [&str; 25] = [
 type Formants = BTreeMap<String, Vec<f64>>;
 
 /// The names of the core definitions of `channels` channels, sorted.
-fn core_names(channels: usize) -> Vec<String> {
+fn core_names(channels: u32) -> Vec<String> {
     let mut names: Vec<String> = CORE_STEMS
         .iter()
         .map(|stem| format!("dirt_{stem}{channels}"))

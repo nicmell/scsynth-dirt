@@ -372,6 +372,16 @@ count. Their names keep the form of SuperDirt: `dirt_gate2`,
   functions over the builder.
 - `dirt_monitor` reads `SuperDirt.postBadValues`, which is false: the
   `post` of `CheckBadValues` is 0.
+- Each definition has a public function of `synthdefs`, with the name of
+  SuperDirt less its channel counts: `dirt_gate(channels)`,
+  `dirt_sample(sample_channels, channels)`. A channel count is a `u32`.
+  The function returns the `SynthDef` of scsynth-synthdef, or its
+  `BuildError`.
+- The module has one file per family: `ugens.rs` for the three
+  pseudo-UGens, then `sample.rs`, `routing.rs`, `effects.rs` and
+  `global.rs`.
+- `tests/synthdefs.rs` compares each definition with the golden one of its
+  name, as bytes, for 1, 2 and 4 channels.
 
 ### The golden files
 
@@ -453,7 +463,7 @@ steps are on `feat/core`.
 | --- | --- | --- |
 | 1 | The scaffold | done |
 | 2 | The generator of the definitions, and its golden files | done |
-| 3 | `DirtGateCutGroup`, `dirt_gate`, `dirt_out`, and the test of byte equality | |
+| 3 | `DirtGateCutGroup`, `dirt_gate`, `dirt_out`, and the test of byte equality | done |
 | 4 | `DirtPan`, and the sample players | |
 | 5 | The 12 event effects, and the vowel table | |
 | 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | |
