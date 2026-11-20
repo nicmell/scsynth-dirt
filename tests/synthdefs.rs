@@ -20,6 +20,18 @@ type Function = fn(u32) -> Result<SynthDef, BuildError>;
 const FUNCTIONS: &[(&str, Function)] = &[
     ("dirt_gate", synthdefs::dirt_gate),
     ("dirt_out", synthdefs::dirt_out),
+    ("dirt_vowel", synthdefs::dirt_vowel),
+    ("dirt_crush", synthdefs::dirt_crush),
+    ("dirt_coarse", synthdefs::dirt_coarse),
+    ("dirt_hpf", synthdefs::dirt_hpf),
+    ("dirt_bpf", synthdefs::dirt_bpf),
+    ("dirt_shape", synthdefs::dirt_shape),
+    ("dirt_lpf", synthdefs::dirt_lpf),
+    ("dirt_envelope", synthdefs::dirt_envelope),
+    ("dirt_grain_envelope", synthdefs::dirt_grain_envelope),
+    ("dirt_pitch_shift", synthdefs::dirt_pitch_shift),
+    ("dirt_tremolo", synthdefs::dirt_tremolo),
+    ("dirt_phaser", synthdefs::dirt_phaser),
 ];
 
 /// A sample player of `synthdefs`, which builds a definition for a count of

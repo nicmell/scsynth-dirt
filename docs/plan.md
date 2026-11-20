@@ -500,7 +500,7 @@ steps are on `feat/core`.
 | 2 | The generator of the definitions, and its golden files | done |
 | 3 | `DirtGateCutGroup`, `dirt_gate`, `dirt_out`, and the test of byte equality | done |
 | 4 | `DirtPan`, the sample players, and the golden players of 3 and 4 sample channels | done |
-| 5 | The 12 event effects, and the vowel table | |
+| 5 | The 12 event effects, and the vowel table | done |
 | 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | |
 | 7 | `Sound` | |
 | 8 | `Library`, and the `fs` helper | |

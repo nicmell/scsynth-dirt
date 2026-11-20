@@ -4,10 +4,15 @@
 //! source in SuperDirt at commit `a3046d1`, in `synths/core-synths.scd` or
 //! `synths/core-synths-global.scd`.
 
+mod effects;
 mod routing;
 mod sample;
 mod ugens;
 
+pub use effects::{
+    dirt_bpf, dirt_coarse, dirt_crush, dirt_envelope, dirt_grain_envelope, dirt_hpf, dirt_lpf,
+    dirt_phaser, dirt_pitch_shift, dirt_shape, dirt_tremolo, dirt_vowel,
+};
 pub use routing::{dirt_gate, dirt_out};
 pub use sample::{dirt_sample, dirt_sample_long, dirt_stretchsample};
 

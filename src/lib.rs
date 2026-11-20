@@ -2,6 +2,9 @@
 
 mod pitch;
 pub mod synthdefs;
+mod vowel;
+
+pub use vowel::Register;
 
 /// The OSC protocol of scsynth: the types of the packets that this crate returns.
 pub use scsynth_osc;
