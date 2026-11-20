@@ -501,16 +501,27 @@ count. Their names keep the form of SuperDirt: `dirt_gate2`,
   type of a control value on the wire.
 - `generator/events.scd` writes `tests/fixtures/events.json`. For each
   scenario, it holds the sounds, and the bundles that SuperDirt sent for
-  each sound. Every bundle stays apart, with its time. A class of
-  `generator/classes/` takes the place of the address of the server, and
-  records.
+  each sound. Every bundle stays apart, with its time. An object of the
+  script takes the place of the address of the server, and records. A
+  class of this repository cannot do it: sclang reads the include paths of
+  its configuration as they are, so a committed file then holds the path
+  of one checkout.
 - The generator gives each event its `when` as `timeStamp` and as
   `latency`. So the time of a recorded bundle is
   `when + lag + offset * |speed|`. The test compares it with the time tag
   of the crate at `epoch` 0.
+- The generator gives each text of a sound as a Symbol, as the OSC parser
+  of sclang does for Tidal.
+- The generator puts the buses of each orbit where the crate puts them,
+  and writes the numbers of the configuration into each scenario. The test
+  builds its `Config` and its `Library` from them.
+- The generator never sees an `/n_end`. So in a scenario with `cut`, each
+  later sound starts before the end of the earlier ones.
+- The generator leaves the `sample` argument of the gate out. It is a hash
+  of sclang that changes at each run.
 - In `events.json`, a message is its address and its arguments. An
-  Integer and a Float stay apart. A symbol or a string is a string, and an
-  array is a list.
+  Integer and a Float stay apart. A symbol or a string is a string, an
+  array is a list, and nil is null.
 - Both generators fail unless sclang is 3.14.1 and the clones of SuperDirt
   and Vowel are at their commits. Both set `Server.default` to their own
   server object, and boot nothing.
@@ -547,7 +558,9 @@ sample, `long` with 1 mono sample over 16,777,216 frames, and `x_bd` for
 11. Channels: the same three sounds on instances of 1 and 4 channels.
 
 The test of the events maps the node ids of both sides by their order of
-appearance. It compares each number as an f32, and leaves `sample` out.
+appearance. It compares each number as an f32. The first message of the
+golden start makes the group of SuperDirt itself. The crate has the `root`
+of the host in its place, and sends no such message.
 
 ### The acceptance test
 
@@ -580,7 +593,7 @@ steps are on `feat/core`.
 | 4 | `DirtPan`, the sample players, and the golden players of 3 and 4 sample channels | done |
 | 5 | The 12 event effects, and the vowel table | done |
 | 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | done |
-| 7 | `Sound` | |
+| 7 | `Sound` | done |
 | 8 | `Library`, and the `fs` helper | |
 | 9 | The generator of the events, and its golden file | |
 | 10 | `Config`, `Dirt::new`, `start`, `stop`, the orbits | |

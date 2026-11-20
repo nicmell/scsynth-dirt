@@ -1,9 +1,11 @@
 #![doc = include_str!("../README.md")]
 
 mod sclang;
+mod sound;
 pub mod synthdefs;
 mod vowel;
 
+pub use sound::{Sound, SoundError, Value};
 pub use synthdefs::Delay;
 pub use vowel::Register;
 
