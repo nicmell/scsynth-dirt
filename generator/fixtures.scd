@@ -17,75 +17,27 @@
 //   sclang -l "$PWD/generator/sc3_plugins/sclang_conf.yaml" \
 //     "$PWD/generator/fixtures.scd"
 //
-// It exits with 1 if sclang is not 3.14.1, if the clone of SuperDirt or of
-// Vowel is missing, is not at its commit or has changes to tracked files, if
-// a class or a method comes from outside the include paths of the
-// configuration, or if the core files of SuperDirt do not add 25 definitions
-// for a channel count. It also exits with 1 if the second load does not add
-// exactly the 6 players.
+// It exits with 1 if a check of common.scd fails, or if the core files of
+// SuperDirt do not add 25 definitions for a channel count. It also exits with
+// 1 if the second load does not add exactly the 6 players.
 (
 var root = thisProcess.nowExecutingPath.dirname.dirname;
 var fixtures = root +/+ "tests" +/+ "fixtures";
 var definitions = fixtures +/+ "definitions";
-var includes = LanguageConfig.includePaths.collect(_.withTrailingSlash);
-// A class name that sclang lacks stops the compile of the whole script, which
-// then never exits (measured), so the classes of the extensions go by symbol.
+var common = (thisProcess.nowExecutingPath.dirname +/+ "common.scd").load;
+// The classes go by symbol, as common.scd says.
 var dirtClass = \SuperDirt.asClass;
 var libraryClass = \DirtSoundLibrary.asClass;
 var vowelClass = \Vowel.asClass;
 var switchDelay = \SwitchDelay.asClass.notNil;
-// sclang 3.14.1 runs the code after 1.exit (measured), so the throw stops it.
-var fail = { |message|
-	("fixtures.scd: " ++ message).postln;
-	1.exit;
-	Error(message).throw;
-};
-var known = { |item|
-	var path = item.filenameSymbol.asString;
-	includes.any { |include| path.beginsWith(include) }
-};
-var checkCommit = { |class, commit|
-	var folder = class.filenameSymbol.asString.dirname;
-	var git = { |command|
-		"git --no-optional-locks -C % %".format(folder.shellQuote, command).unixCmdGetStdOut
-	};
-	var head = git.("rev-parse HEAD").stripWhiteSpace;
-	if (head != commit) {
-		fail.("the clone of % in % is at %, not %".format(class, folder, head, commit));
-	};
-	if (git.("status --porcelain --untracked-files=no").notEmpty) {
-		fail.("the clone of % in % has changes to tracked files".format(class, folder));
-	};
-};
 var added = { |before|
 	SynthDescLib.global.synthDescs.keys.asArray.reject { |name| before.includes(name) }.sort
 };
-var write, writeVowels, server, synths;
+var fail, server, write, writeVowels, synths;
 
 try {
-	if (Main.version != "3.14.1") {
-		fail.("sclang % is not 3.14.1".format(Main.version));
-	};
-	if (dirtClass.isNil or: { vowelClass.isNil }) {
-		fail.("the configuration lacks SuperDirt or the Vowel quark");
-	};
-	checkCommit.(dirtClass, "a3046d1e693eb1c7f5502fb1d0a27d59099737f8");
-	checkCommit.(vowelClass, "ab59caa870201ecf2604b3efdd2196e21a8b5446");
-	Class.allClasses.do { |class|
-		if (known.(class).not) {
-			fail.("% comes from %".format(class, class.filenameSymbol));
-		};
-		(class.methods ? []).do { |method|
-			if (known.(method).not) {
-				fail.("% comes from %".format(method, method.filenameSymbol));
-			};
-		};
-	};
-
-	// Server.default is the scsynth on UDP 57110 unless set, and SuperDirt
-	// takes it where it gets no server.
-	server = Server(\scsynth_dirt_fixtures, NetAddr("127.0.0.1", 57999));
-	Server.default = server;
+	if (common.isNil) { Error("fixtures.scd: generator/common.scd does not load").throw };
+	#fail, server = common.("fixtures.scd", \scsynth_dirt_fixtures);
 
 	write = { |name, defs|
 		var stream = CollStream.on(Int8Array.new(256));

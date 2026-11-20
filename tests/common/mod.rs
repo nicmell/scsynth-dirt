@@ -1,6 +1,8 @@
-//! The golden files of `tests/fixtures`, as `generator/fixtures.scd` writes
-//! them with sclang 3.14.1.
+//! The golden files of `tests/fixtures`, as the generators of `generator/`
+//! write them with sclang 3.14.1.
 #![allow(dead_code, reason = "each test file uses a part of this module")]
+
+pub mod events;
 
 use std::fs;
 use std::path::{Path, PathBuf};

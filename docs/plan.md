@@ -309,6 +309,10 @@ It returns the bundles of the sound, or the reason of a drop:
   of a number.
 - A time that is not finite, or under 0 with `epoch`.
 
+`s`, `sound`, `bank` and `unit` are texts. A `vowel` that is no text
+counts as no vowel. Every other parameter that `play` reads is a number. A
+sound that drops changes nothing in the instance.
+
 1. The name. Without `s`, the text of `sound` splits at `:`. Its first
    part is the name. Its second part gives `n`: the number at its start,
    or 0. With `bank`, the name is `bank_name`. An empty name is silence. A
@@ -344,7 +348,9 @@ It returns the bundles of the sound, or the reason of a drop:
 6. With `channel`, `pan` gains `channel / channels`. Then `pan` is
    `pan * 2 - 1`. `delayAmp` is `delay`, or 0.
 7. The time of the sound is `when + lag + offset * |speed|`, with the
-   speed of step 4. Its time tag adds `epoch`. It holds the whole seconds
+   speed of step 4. The sum runs from left to right: another order can
+   change the last bit, and with it the time tag. Its time tag adds
+   `epoch`. It holds the whole seconds
    modulo 2^32, and the fraction in units of 2^-32, rounded down. Without
    `when`, the time tag is the immediate one, and `lag` and `offset` have
    no effect.
@@ -357,7 +363,10 @@ It returns the bundles of the sound, or the reason of a drop:
      test is off.
    - For a negative `cut`, its sample is this sample.
 
-   If the value of `cutAll` is a number other than 0, `cutAll` is on.
+   If the value of `cutAll` is a number other than 0, `cutAll` is on. The
+   `cut_gate` messages come in the order in which their sounds started.
+   SuperDirt sends them in the order of a dictionary of sclang, so the
+   test of the events compares them as a set.
 9. The bundle of the sound:
    - The global synths, in the order delay, reverb, leslie, rms, monitor.
      The first table below gives the parameters of each. The rms is off,
@@ -425,6 +434,8 @@ Differences from SuperDirt, for the README:
 - An unknown sound sends nothing (fact 15).
 - A sound without `s` and `sound` drops. SuperDirt plays the sound `nil`.
 - `cutAll` is a number. SuperDirt takes the boolean true.
+- The `cut_gate` messages of a bundle come in the order of the starts of
+  their sounds. SuperDirt sends them in the order of a dictionary.
 - The gate gets no `sample` argument.
 - An argument that is an array plays one synth, not one per element.
 - No `diversion`, `play` or `playInside` function of an event.
@@ -532,6 +543,9 @@ count. Their names keep the form of SuperDirt: `dirt_gate2`,
 - Both generators fail unless sclang is 3.14.1 and the clones of SuperDirt
   and Vowel are at their commits. Both set `Server.default` to their own
   server object, and boot nothing.
+- The tests read `events.json` with the feature `float_roundtrip` of
+  serde_json. Without it, 6 of its 2,511 floats read 1 unit of the last
+  bit off, and a time tag takes the floor of its time.
 
 Each scenario of the events runs on a fresh instance of 2 orbits. The
 library holds four names: `bd` with 2 mono samples, `sn` with 1 stereo
@@ -602,7 +616,7 @@ steps are on `feat/core`.
 | 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | done |
 | 7 | `Sound` | done |
 | 8 | `Library`, and the `fs` helper | done |
-| 9 | The generator of the events, and its golden file | |
+| 9 | The generator of the events, and its golden file | done |
 | 10 | `Config`, `Dirt::new`, `start`, `stop`, the orbits | |
 | 11 | `play` and `reply` | |
 | 12 | The acceptance test | |
