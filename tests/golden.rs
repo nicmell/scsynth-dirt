@@ -11,11 +11,7 @@ use std::fs;
 
 use scsynth_synthdef::{DefFile, read_def_file, write_def_file};
 
-use common::CHANNELS;
-
-/// The largest datagram that sc-app3 sends to scsynth: `MAX_DATAGRAM` of its
-/// core.
-const MAX_DATAGRAM: usize = 8_192;
+use common::{CHANNELS, MAX_DATAGRAM};
 
 /// The wire buffers of scsynth 3.14.1 without `-w`: `mMaxWireBufs` of
 /// `SC_WorldOptions.h`.

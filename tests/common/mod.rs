@@ -1,8 +1,9 @@
 //! The golden files of `tests/fixtures`, as the generators of `generator/`
-//! write them with sclang 3.14.1.
+//! write them with sclang 3.14.1, and the packets of the crate on the wire.
 #![allow(dead_code, reason = "each test file uses a part of this module")]
 
 pub mod events;
+pub mod wire;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -11,6 +12,10 @@ use scsynth_synthdef::{DefFile, InputSpec, Rate, SynthDef, UGen, operator, read_
 
 /// The channel counts of the golden definition files.
 pub const CHANNELS: [u32; 3] = [1, 2, 4];
+
+/// The largest datagram that sc-app3 sends to scsynth: `MAX_DATAGRAM` of its
+/// core.
+pub const MAX_DATAGRAM: usize = 8_192;
 
 /// The path of a file of `tests/fixtures`.
 pub fn fixture(name: &str) -> PathBuf {

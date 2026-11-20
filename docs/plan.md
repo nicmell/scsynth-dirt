@@ -173,8 +173,8 @@ no synth reads (fact 22). The buses of the next orbit come after it.
 
 - A count of 0, or a count that the builder of a definition refuses.
 - A `Delay::Switch` without the feature `sc3-plugins`.
-- A node id under 1 in `fixed_nodes` or `sound_nodes`, or an empty
-  `sound_nodes`.
+- A node id under 1 in `fixed_nodes` or `sound_nodes`, an empty
+  `sound_nodes`, or a `root` under 0.
 - Node ids that overlap: the fixed ones, the ones of the sounds, and
   `root`.
 - Output buses that overlap the private buses.
@@ -597,9 +597,15 @@ of the host in its place, and sends no such message.
 - The onset of a sound sits at `round(t * sample rate) + k`, for a time
   tag in the middle of a block, with k measured once. A time tag one
   sample later moves the onset by one sample.
+- A sound of a constant sample comes out at the level that the chain
+  predicts.
 - The output is silent after a cut.
-- A second test loads the `SwitchDelay` delay with the plugins of
-  sc3-plugins.
+- The delay echoes with `Delay::Comb`. With the feature `sc3-plugins`, a
+  second test loads the `SwitchDelay` delay with the plugins of
+  sc3-plugins, and it echoes too.
+- With 1 and with 4 channels, the sound comes out on the channels of
+  `DirtPan`. With 1 channel, the reverb of an orbit adds nothing to the
+  next orbit (fact 22).
 
 ## The steps
 
@@ -617,7 +623,7 @@ steps are on `feat/core`.
 | 7 | `Sound` | done |
 | 8 | `Library`, and the `fs` helper | done |
 | 9 | The generator of the events, and its golden file | done |
-| 10 | `Config`, `Dirt::new`, `start`, `stop`, the orbits | |
+| 10 | `Config`, `Dirt::new`, `start`, `stop`, the orbits | done |
 | 11 | `play` and `reply` | |
 | 12 | The acceptance test | |
 | 13 | The README, the CHANGELOG, this file | |

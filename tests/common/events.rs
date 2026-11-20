@@ -6,6 +6,8 @@
 use std::collections::BTreeMap;
 use std::fs;
 
+use scsynth_dirt::{Delay, Dirt, Register};
+use scsynth_osc::NodeId;
 use serde::Deserialize;
 
 /// The golden events.
@@ -30,6 +32,29 @@ pub struct Scenario {
     pub start: Vec<Bundle>,
     /// The steps, in their order.
     pub steps: Vec<Step>,
+}
+
+impl Scenario {
+    /// A new instance of the crate for the scenario: the numbers of its
+    /// configuration, with the delay of `CombL`, the voice register of
+    /// SuperDirt and the epoch 0. Its node ids differ from those of the
+    /// golden bundles.
+    pub fn dirt(&self) -> Dirt {
+        let config = scsynth_dirt::Config {
+            channels: self.config.channels,
+            orbits: self.config.orbits,
+            root: NodeId(1),
+            fixed_nodes: 100,
+            sound_nodes: 2000..3000,
+            first_bus: self.config.first_bus,
+            out_bus: self.config.out_bus,
+            sample_rate: self.config.sample_rate,
+            delay: Delay::Comb,
+            register: Register::CounterTenor,
+            epoch: 0.0,
+        };
+        Dirt::new(config).unwrap_or_else(|error| panic!("{}: {error}", self.name))
+    }
 }
 
 /// The structure of an instance, with the fields of the same names in the
