@@ -9,6 +9,8 @@ use scsynth_osc::command::buffer::{BAllocRead, BFree, BQuery};
 use scsynth_osc::reply::buffer::BufferInfo;
 use scsynth_osc::{BufferId, Command, Completion, Reply};
 
+use crate::sclang;
+
 /// A library of samples: names, each with its samples in order. A sample is
 /// a sound file that scsynth reads into a buffer. The buffers come from a
 /// range of buffer numbers that the host gives.
@@ -151,7 +153,7 @@ impl Library {
     pub fn sample(&self, name: &str, n: f64) -> Option<&Sample> {
         let samples = self.names.get(name)?;
         let count = i32::try_from(samples.len()).ok()?;
-        let index = as_integer(n).checked_rem_euclid(count)?;
+        let index = sclang::as_integer(n).checked_rem_euclid(count)?;
         samples.get(usize::try_from(index).ok()?)
     }
 
@@ -241,16 +243,6 @@ fn sample_info(entry: BufferInfo) -> Option<SampleInfo> {
         channels,
         sample_rate,
     })
-}
-
-/// `n.asInteger` of sclang: `n` truncated toward 0 to an `i32`. A value past
-/// the range of `i32` saturates, and a NaN is 0.
-#[allow(
-    clippy::cast_possible_truncation,
-    reason = "asInteger of sclang truncates a Float toward 0 to a 32-bit Integer, and gives the largest one for inf"
-)]
-fn as_integer(n: f64) -> i32 {
-    n as i32
 }
 
 /// A sample of a [`Library`]: a sound file, and the buffer of scsynth that

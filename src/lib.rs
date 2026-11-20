@@ -2,6 +2,7 @@
 
 mod config;
 mod dirt;
+mod event;
 #[cfg(feature = "fs")]
 pub mod fs;
 mod library;
@@ -13,6 +14,7 @@ mod vowel;
 
 pub use config::{Config, ConfigError};
 pub use dirt::Dirt;
+pub use event::Dropped;
 pub use library::{Library, LibraryError, Sample, SampleInfo};
 pub use orbit::Orbit;
 pub use sound::{Sound, SoundError, Value};

@@ -40,13 +40,6 @@ pub(crate) struct Formants {
 
 /// The formants of the vowel `name` in `register`, or none for a name that
 /// is none of a, e, i, o and u.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "nothing reads the formants before play, step 11 of docs/plan.md"
-    )
-)]
 pub(crate) fn formants(register: Register, name: &str) -> Option<Formants> {
     let vowels = match register {
         Register::Soprano => &SOPRANO,

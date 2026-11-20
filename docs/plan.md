@@ -305,13 +305,15 @@ It returns the bundles of the sound, or the reason of a drop:
 - A sample of more than 2 channels.
 - A bad unit.
 - A sustain under 8 samples.
-- A parameter of the wrong kind. SuperDirt throws on a text in the place
-  of a number.
+- A parameter of the wrong kind. SuperDirt sends a text in the place of a
+  number to scsynth as it is, or drops the sound without a word.
 - A time that is not finite, or under 0 with `epoch`.
 
 `s`, `sound`, `bank` and `unit` are texts. A `vowel` that is no text
-counts as no vowel. Every other parameter that `play` reads is a number. A
-sound that drops changes nothing in the instance.
+counts as no vowel. Every other parameter that `play` reads is a number.
+`play` reads a parameter only where a rule needs it, so a text in a
+parameter that the sound does not read drops nothing. A sound that drops
+changes nothing in the instance.
 
 1. The name. Without `s`, the text of `sound` splits at `:`. Its first
    part is the name. Its second part gives `n`: the number at its start,
@@ -323,8 +325,10 @@ sound that drops changes nothing in the instance.
 4. The span, as `orderTimeSpan` and `calcTimeSpan`:
    - A negative `speed` swaps `begin` and `end`. `length` is
      `|end - begin|`.
-   - `freq` is the `freq` of the sound, else the `midicps` of `midinote`,
-     else that of `note + octave * 12`.
+   - `freq` is the `freq` of the sound or of its orbit, else the `midicps`
+     of `midinote`, else that of `note + octave * 12`. `note` comes from
+     the sound alone, because the 0 of the sample hides a default of the
+     orbit.
    - `unitDuration` is `frames / sample rate of the buffer * 60.midicps /
      freq`.
    - With `unit` c, `speed` is `speed * cps * unitDuration`.
@@ -424,7 +428,8 @@ the sound plus `fadeInTime`, `sustain` and `fadeTime`. A sound without
 - A sound leaves the list at its `/n_end`, which `reply` takes.
 - A sound also leaves the list once a later sound starts after its end.
 - If every id of `sound_nodes` is live, the oldest live sound leaves the
-  list, and its id serves again.
+  list, and its id serves again. The cut of the new sound runs first, so
+  it can still reach that sound.
 
 In the messages, a node id, a bus and a buffer number are ints. A
 parameter of a sound is a float.
@@ -433,6 +438,13 @@ Differences from SuperDirt, for the README:
 
 - An unknown sound sends nothing (fact 15).
 - A sound without `s` and `sound` drops. SuperDirt plays the sound `nil`.
+- A text in the place of a number drops the sound. SuperDirt sends the
+  text to scsynth, or drops the sound without a word.
+- The `n` of `sound` after its colon reads a decimal number. sclang also
+  reads a hexadecimal one there.
+- A sound cannot replace the values that SuperDirt keeps in its event,
+  such as `out`, `buffer`, `instrument`, `unitDuration` and `latency`. In
+  SuperDirt, the pairs of a sound come first.
 - `cutAll` is a number. SuperDirt takes the boolean true.
 - The `cut_gate` messages of a bundle come in the order of the starts of
   their sounds. SuperDirt sends them in the order of a dictionary.
@@ -624,7 +636,7 @@ steps are on `feat/core`.
 | 8 | `Library`, and the `fs` helper | done |
 | 9 | The generator of the events, and its golden file | done |
 | 10 | `Config`, `Dirt::new`, `start`, `stop`, the orbits | done |
-| 11 | `play` and `reply` | |
+| 11 | `play` and `reply` | done |
 | 12 | The acceptance test | |
 | 13 | The README, the CHANGELOG, this file | |
 

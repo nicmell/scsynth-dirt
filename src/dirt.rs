@@ -9,12 +9,16 @@ use scsynth_osc::command::synth::SNew;
 use scsynth_osc::command::synth_def::DRecv;
 use scsynth_osc::command::top_level::ErrorMode;
 use scsynth_osc::{
-    AddAction, Bundle, Command, Completion, ControlSetting, NewNodeId, NodeId, Packet, Timetag,
+    AddAction, Bundle, Command, Completion, ControlSetting, NewNodeId, NodeId, Packet, Reply,
+    Timetag,
 };
 use scsynth_synthdef::{BuildError, SynthDef};
 
 use crate::config::{Config, ConfigError, int};
+use crate::event::{Dropped, Event, Live};
+use crate::library::Library;
 use crate::orbit::Orbit;
+use crate::sound::Sound;
 use crate::synthdefs;
 
 /// The global definitions at the head of [`synthdefs::core`]: the monitor,
@@ -24,8 +28,9 @@ const GLOBAL_DEFINITIONS: usize = 5;
 /// An instance of SuperDirt on scsynth: the orbits of a [`Config`], and the
 /// 25 synth definitions of its channel count.
 ///
-/// The instance does no I/O. [`Dirt::start`] and [`Dirt::stop`] return
-/// commands for scsynth, and the host sends them in order.
+/// The instance does no I/O. [`Dirt::start`], [`Dirt::stop`] and
+/// [`Dirt::play`] return commands for scsynth, and the host sends them in
+/// order. The host passes the replies of scsynth to [`Dirt::reply`].
 #[derive(Clone, Debug)]
 pub struct Dirt {
     /// The configuration.
@@ -36,6 +41,8 @@ pub struct Dirt {
     orbits: Vec<Orbit>,
     /// The commands of [`Dirt::start`].
     start: Vec<Command>,
+    /// The sounds that may still play, and the next node id for a sound.
+    live: Live,
 }
 
 impl Dirt {
@@ -52,11 +59,13 @@ impl Dirt {
             synthdefs::core(config.channels, config.delay).map_err(ConfigError::Definition)?;
         let orbits = Orbit::all(&config);
         let start = start_commands(&config, &definitions, &orbits)?;
+        let live = Live::new(config.sound_nodes.clone());
         Ok(Self {
             config,
             definitions,
             orbits,
             start,
+            live,
         })
     }
 
@@ -103,16 +112,25 @@ impl Dirt {
     /// group, paused, in the order monitor, rms, leslie, reverb, delay. So the
     /// synths sit after the group in the order delay, reverb, leslie, rms,
     /// monitor.
+    ///
+    /// The instance also forgets what [`Dirt::play`] keeps: the last
+    /// parameters of the global synths and the live sounds. The node ids of
+    /// the sounds start over from the first of `sound_nodes`.
     #[must_use]
     pub fn start(&mut self) -> Vec<Command> {
+        self.clear();
         self.start.clone()
     }
 
     /// The commands that free the nodes of the instance: per orbit, in order,
     /// one bundle with the immediate time tag that holds `/error -1`, one
     /// `/n_free` of the group and of the five global synths, and `/error -2`.
+    ///
+    /// The instance also forgets what [`Dirt::play`] keeps, as
+    /// [`Dirt::start`] does.
     #[must_use]
     pub fn stop(&mut self) -> Vec<Bundle<Command>> {
+        self.clear();
         self.orbits
             .iter()
             .map(|orbit| {
@@ -128,6 +146,57 @@ impl Dirt {
                 }
             })
             .collect()
+    }
+
+    /// The bundles that play `sound` with the samples of `library`, as
+    /// `DirtEvent.play` of SuperDirt sends them for a sample sound. Each has
+    /// the time tag of the sound: `when + lag + offset * |speed|` plus the
+    /// `epoch` of the configuration, or the immediate one without `when`.
+    ///
+    /// - With a `cut` that is not 0, a first bundle holds `/error -1`, then
+    ///   `/n_set group cut_gate 0` for each live sound that the cut reaches,
+    ///   in the order of their starts.
+    /// - The bundle of the sound resumes the global synths of its orbit, and
+    ///   sets their parameters that changed since the last sound of the
+    ///   orbit. It then makes the group of the sound at the tail of the group
+    ///   of the orbit, and the synths of the sound in it: the player of the
+    ///   sample, the effects of its modules, and its gate.
+    ///
+    /// The group takes the next node id of `sound_nodes` that no live sound
+    /// holds, and the sound joins the live sounds. With every id live, the
+    /// oldest live sound leaves first, and its id serves again. A sound also
+    /// leaves at the `/n_end` of its group, which [`Dirt::reply`] takes, or
+    /// once a later sound starts after its end.
+    ///
+    /// # Errors
+    ///
+    /// The [`Dropped`] reason of a sound that does not play. The instance then
+    /// stays as it was.
+    pub fn play(
+        &mut self,
+        library: &Library,
+        sound: &Sound,
+    ) -> Result<Vec<Bundle<Command>>, Dropped> {
+        let event = Event::new(&self.config, &self.orbits, library, sound)?;
+        Ok(event.send(&mut self.orbits, &mut self.live))
+    }
+
+    /// Takes a reply of scsynth: the `/n_end` of the group of a live sound
+    /// takes the sound out of the live sounds, so that no later cut reaches
+    /// it. Every other reply does nothing.
+    pub fn reply(&mut self, reply: &Reply) {
+        if let Reply::NEnd(state) = reply {
+            self.live.end(state.node);
+        }
+    }
+
+    /// Forgets the last parameters of the global synths and the live sounds,
+    /// and starts the node ids of the sounds over.
+    fn clear(&mut self) {
+        self.live.clear();
+        for orbit in &mut self.orbits {
+            orbit.clear_effects();
+        }
     }
 }
 

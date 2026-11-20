@@ -72,6 +72,40 @@ impl Comparison {
         }
     }
 
+    /// Asserts that the messages of the golden bundle `golden` equal `ours`,
+    /// as [`Comparison::assert_bundle`] does, but the messages from index
+    /// `first` on as sets. Each of them starts with a node id that is paired
+    /// already, and they compare in the order of the node ids of the crate.
+    pub fn assert_bundle_unordered(
+        &mut self,
+        bundle: &str,
+        golden: &Bundle,
+        ours: &[RawMessage],
+        first: usize,
+    ) {
+        let paired = |message: &Message| match message.args.first() {
+            Some(&Value::Int(node)) => *self.ours.get(&node).unwrap_or_else(|| {
+                panic!(
+                    "{}: {bundle}: the golden node {node} is not paired: {message:?}",
+                    self.scenario
+                )
+            }),
+            _ => panic!("{}: {bundle}: {message:?} names no node", self.scenario),
+        };
+        let mut golden = golden.clone();
+        if let Some(rest) = golden.messages.get_mut(first..) {
+            rest.sort_by_key(paired);
+        }
+        let mut ours = ours.to_vec();
+        if let Some(rest) = ours.get_mut(first..) {
+            rest.sort_by_key(|message| match message.args.first() {
+                Some(&RawArg::Int(node)) => node,
+                _ => panic!("{}: {bundle}: {message:?} names no node", self.scenario),
+            });
+        }
+        self.assert_bundle(bundle, &golden, &ours);
+    }
+
     /// The difference of the golden message `golden` and the raw message
     /// `ours` of the crate, if any.
     fn message(&mut self, golden: &Message, ours: &RawMessage) -> Result<(), String> {

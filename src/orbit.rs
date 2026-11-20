@@ -10,7 +10,8 @@ use crate::sound::Value;
 
 /// One orbit of a [`Dirt`](crate::Dirt): a group for its sounds, five global
 /// synths after the group, three private buses and the output buses of its
-/// monitor, and the defaults of its sounds.
+/// monitor, and the defaults of its sounds. It also keeps the last value of
+/// each parameter of its global synths, for [`Dirt::play`](crate::Dirt::play).
 ///
 /// Orbit `k` takes the 6 node ids from `fixed_nodes + 6 * k` of its
 /// [`Config`]: its group, then its monitor, rms, leslie, reverb and delay. Its
@@ -35,6 +36,10 @@ pub struct Orbit {
     out_bus: u32,
     /// The defaults of the parameters of a sound, by name.
     defaults: BTreeMap<String, Value>,
+    /// The last value of each parameter of the global synths, by name, as
+    /// `GlobalDirtEffect.state` of SuperDirt keeps it. A parameter without a
+    /// value stays out.
+    effects: BTreeMap<&'static str, f64>,
 }
 
 impl Orbit {
@@ -56,6 +61,7 @@ impl Orbit {
                     effect_bus: synth_bus + 2 * config.channels,
                     out_bus: config.out_bus,
                     defaults: defaults(),
+                    effects: BTreeMap::new(),
                 }
             })
             .collect()
@@ -142,6 +148,27 @@ impl Orbit {
     pub fn set(&mut self, name: impl Into<String>, value: impl Into<Value>) -> &mut Self {
         self.defaults.insert(name.into(), value.into());
         self
+    }
+
+    /// Records `value` as the last value of the parameter `name` of a global
+    /// synth, and returns whether it differs from the value before, as
+    /// `GlobalDirtEffect.set` of SuperDirt compares them: numbers by value,
+    /// and no value equal to no value alone.
+    pub(crate) fn change_effect(&mut self, name: &'static str, value: Option<f64>) -> bool {
+        let changed = self.effects.get(name).copied() != value;
+        if changed {
+            if let Some(value) = value {
+                self.effects.insert(name, value);
+            } else {
+                self.effects.remove(name);
+            }
+        }
+        changed
+    }
+
+    /// Forgets the last values of the parameters of the global synths.
+    pub(crate) fn clear_effects(&mut self) {
+        self.effects.clear();
     }
 }
 
