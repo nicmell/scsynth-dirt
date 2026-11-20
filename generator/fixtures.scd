@@ -3,7 +3,11 @@
 // server. Run it from the root of the repository, with absolute paths, since
 // ~/.bin/sclang changes the directory. Without the class SwitchDelay, it
 // writes definitions/core_<n>.scsyndef, the 25 definitions of n channels in
-// the order of their names, and vowels.json, the formants of the Vowel quark:
+// the order of their names. Then it loads core-synths.scd again with
+// maxSampleNumChannels of SuperDirt at 4, and writes
+// definitions/players_3_4_<n>.scsyndef, the 6 sample players of 3 and 4
+// sample channels in the order of their names. Last, it writes vowels.json,
+// the formants of the Vowel quark:
 //
 //   sclang -l "$PWD/generator/sclang_conf.yaml" "$PWD/generator/fixtures.scd"
 //
@@ -17,7 +21,8 @@
 // Vowel is missing, is not at its commit or has changes to tracked files, if
 // a class or a method comes from outside the include paths of the
 // configuration, or if the core files of SuperDirt do not add 25 definitions
-// for a channel count.
+// for a channel count. It also exits with 1 if the second load does not add
+// exactly the 6 players.
 (
 var root = thisProcess.nowExecutingPath.dirname.dirname;
 var fixtures = root +/+ "tests" +/+ "fixtures";
@@ -51,6 +56,9 @@ var checkCommit = { |class, commit|
 	if (git.("status --porcelain --untracked-files=no").notEmpty) {
 		fail.("the clone of % in % has changes to tracked files".format(class, folder));
 	};
+};
+var added = { |before|
+	SynthDescLib.global.synthDescs.keys.asArray.reject { |name| before.includes(name) }.sort
 };
 var write, writeVowels, server, synths;
 
@@ -112,17 +120,17 @@ try {
 	definitions.mkdir;
 	[1, 2, 4].do { |channels|
 		var dirt = dirtClass.newCopyArgs(channels, server);
+		var environment = (dirt: dirt);
 		var before = SynthDescLib.global.synthDescs.keys;
-		var names;
+		var names, players;
 		dirt.modules = [];
 		dirt.soundLibrary = libraryClass.new(server, channels);
 		// The extras of SuperDirt throw for 1 channel: compressor sends mean to
 		// one channel.
 		["core-modules.scd", "core-synths-global.scd", "core-synths.scd"].do { |file|
-			(dirt: dirt).use { (synths +/+ file).load };
+			environment.use { (synths +/+ file).load };
 		};
-		names = SynthDescLib.global.synthDescs.keys.asArray
-			.reject { |name| before.includes(name) }.sort;
+		names = added.(before);
 		if (names.size != 25) {
 			fail.("the core files add % definitions for numChannels %, not 25"
 				.format(names.size, channels));
@@ -132,6 +140,19 @@ try {
 				[SynthDescLib.global.at(("dirt_delay" ++ channels).asSymbol).def]);
 		} {
 			write.("core_" ++ channels, names.collect { |name| SynthDescLib.global.at(name).def });
+			before = SynthDescLib.global.synthDescs.keys;
+			dirtClass.maxSampleNumChannels = 4;
+			environment.use { (synths +/+ "core-synths.scd").load };
+			dirtClass.maxSampleNumChannels = 2;
+			names = added.(before);
+			players = ["sample_3_", "sample_4_", "sample_long_3_", "sample_long_4_",
+				"stretchsample_3_", "stretchsample_4_"]
+				.collect { |stem| ("dirt_" ++ stem ++ channels).asSymbol };
+			if (names != players) {
+				fail.("core-synths.scd adds % for maxSampleNumChannels 4 and numChannels %, not %"
+					.format(names, channels, players));
+			};
+			write.("players_3_4_" ++ channels, names.collect { |name| SynthDescLib.global.at(name).def });
 		};
 	};
 	if (switchDelay.not) { writeVowels.() };

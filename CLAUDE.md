@@ -60,8 +60,9 @@ The generator writes the golden files of `tests/fixtures`. Run it from the
 root of the repository, with absolute paths, because `~/.bin/sclang`
 changes the directory. If no terminal reads the output of sclang, sclang
 hides it, so a run under `script` shows it. With the first configuration,
-it writes the 25 definitions of each channel count and `vowels.json`. With
-the second, it writes the `SwitchDelay` delay of each channel count.
+it writes the 25 definitions of each channel count, the players of 3 and 4
+sample channels, and `vowels.json`. With the second, it writes the
+`SwitchDelay` delay of each channel count.
 
 ```bash
 sclang -l "$PWD/generator/sclang_conf.yaml" "$PWD/generator/fixtures.scd"

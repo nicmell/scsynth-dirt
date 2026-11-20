@@ -5,13 +5,32 @@
 //! `synths/core-synths-global.scd`.
 
 mod routing;
+mod sample;
 mod ugens;
 
 pub use routing::{dirt_gate, dirt_out};
+pub use sample::{dirt_sample, dirt_sample_long, dirt_stretchsample};
 
-use scsynth_synthdef::{SynthDefBuilder, UGenInput};
+use scsynth_synthdef::{BuildError, SynthDefBuilder, UGenInput};
 
 /// The input of each of the first `N` arguments of `builder`, in their order.
 fn arguments<const N: usize>(builder: &SynthDefBuilder) -> [UGenInput; N] {
     std::array::from_fn(|index| builder.arguments()[index].clone())
+}
+
+/// `input.asArray` in sclang: the elements of an array, or the input alone.
+fn as_array(input: UGenInput) -> Vec<UGenInput> {
+    match input {
+        UGenInput::Array(items) => items,
+        other => vec![other],
+    }
+}
+
+/// `items.sum` in sclang: 0, plus each item in order.
+fn sum(builder: &mut SynthDefBuilder, items: Vec<UGenInput>) -> Result<UGenInput, BuildError> {
+    items
+        .into_iter()
+        .try_fold(UGenInput::Number(0.0), |total, item| {
+            builder.binary_op("+", total, item)
+        })
 }

@@ -120,17 +120,20 @@ in the sources named above.
 
 | Module | Holds |
 | --- | --- |
-| `config` | `Config`, `Delay`, `Register`, and the errors of a configuration |
+| `config` | `Config`, and the errors of a configuration |
 | `sound` | `Sound`, `Value`, the setters of the 32 fields of libdirt, the read of the arguments of `/dirt/play` |
 | `library` | `Library` and `Sample`: the names, the buffers, their loads and replies |
 | `dirt` | `Dirt`: `new`, `start`, `stop`, `play`, `reply`, the orbits |
 | `event` | Private: the port of `DirtEvent`, from a sound to its bundles |
 | `orbit` | The defaults, the nodes, the buses and the state of the global synths of one orbit |
-| `vowel` | The table of the Vowel quark |
-| `synthdefs` | The definitions: the pseudo-UGens of SuperDirt, the sample players, the routing, the effects, the global synths |
+| `vowel` | `Register`, and the table of the Vowel quark |
+| `pitch` | Private: `midicps` |
+| `synthdefs` | `Delay`, and the definitions: the pseudo-UGens of SuperDirt, the sample players, the routing, the effects, the global synths |
 | `fs` | With the feature `fs`: a folder as SuperDirt lists it |
 
-The crate re-exports `scsynth_osc` and `scsynth_synthdef`.
+`synthdefs` and `fs` are public modules. The root of the crate re-exports
+the public types of the other modules. The crate also re-exports
+`scsynth_osc` and `scsynth_synthdef`.
 
 ### Config
 
@@ -208,7 +211,7 @@ them. `Dirt::orbit_mut(index).set(name, value)` changes one, as
 
 ```text
 cps 1        offset 0     begin 0      end 1        speed 1      pan 0.5
-gain 1       overgain 0   cut 0        unit r       octave 5     delta 1
+gain 1       overgain 0   cut 0        unit r       octave 5     dur 1
 lag 0        loop 1       dry 0        lock 0       amp 0.4      fadeTime 0.001
 ```
 
@@ -246,15 +249,24 @@ tag: `/error -1`, `/n_free` of the group and of the five synths,
 ### play
 
 `play(library, sound)` is the port of `DirtEvent.play` for a sample sound.
-It returns the bundles of the sound, or the reason of a drop: silence, an
-unknown sound, a sample that is not loaded, a bad unit, a sustain under 8
-samples.
+It returns the bundles of the sound, or the reason of a drop:
 
-1. The name. Without `s`, the text of `sound` splits at `:` into the name
-   and `n`. With `bank`, the name is `bank_name`. An empty name is
-   silence.
+- Silence, or a sound without a name.
+- An unknown sound.
+- A sample that is not loaded.
+- A sample of more than 2 channels.
+- A bad unit.
+- A sustain under 8 samples.
+- A parameter of the wrong kind. SuperDirt throws on a text in the place
+  of a number.
+
+1. The name. Without `s`, the text of `sound` splits at `:`. Its first
+   part is the name. Its second part gives `n`: the number at its start,
+   or 0. With `bank`, the name is `bank_name`. An empty name is silence. A
+   sound without `s` and `sound` drops.
 2. The orbit is `orbit`, truncated and wrapped to the count.
-3. The sample is `library.sample(name, n)`.
+3. The sample is `library.sample(name, n)`. A negative `n` counts from the
+   end.
 4. The span, as `orderTimeSpan` and `calcTimeSpan`:
    - A negative `speed` swaps `begin` and `end`. `length` is
      `|end - begin|`.
@@ -269,6 +281,8 @@ samples.
    - With `unit` r or c, `unitDuration` is `unitDuration * length /
      average speed`. With `unit` s, it is `length`. The text `rate` counts
      as r. Any other unit drops the sound.
+   - `delta` is the `delta` of the sound. Without it, `delta` is `dur`,
+     which is 1 by default.
    - `sustain` is the `sustain` of the sound. Else, with `legato`, it is
      `delta * legato`. Else `unitDuration` becomes `unitDuration * |loop|`,
      and `sustain` takes that value.
@@ -287,9 +301,12 @@ samples.
    holds `/n_set node cut_gate 0` for each live sound that passes these
    tests:
    - Its cut group is `|cut|`.
-   - Its orbit is this orbit.
-   - Its time differs from this time.
+   - Its orbit is this orbit, and its `when` differs from this `when`. A
+     sound without `when` differs from every sound. With `cutAll`, this
+     test is off.
    - For a negative `cut`, its sample is this sample.
+
+   If the value of `cutAll` is a number other than 0, `cutAll` is on.
 9. The bundle of the sound:
    - The global synths, in the order delay, reverb, leslie, rms, monitor.
      The first table below gives the parameters of each. The rms is off,
@@ -345,12 +362,17 @@ It also leaves them once a later sound starts after its end.
 Differences from SuperDirt, for the README:
 
 - An unknown sound sends nothing (fact 15).
+- A sound without `s` and `sound` drops. SuperDirt plays the sound `nil`.
+- `cutAll` is a number. SuperDirt takes the boolean true.
 - The gate gets no `sample` argument.
 - An argument that is an array plays one synth, not one per element.
 - No `diversion`, `play` or `playInside` function of an event.
 - No `smpl` chunk of a WAV file: `metatune` has no effect.
 - A sample that is not loaded drops its sound. SuperDirt can read it at
   the first use.
+- A sample of more than 2 channels drops its sound, because `start` loads
+  the players of 1 and 2 channels. SuperDirt sends a synth whose
+  definition scsynth lacks.
 
 ### The definitions
 
@@ -382,12 +404,23 @@ count. Their names keep the form of SuperDirt: `dirt_gate2`,
   `global.rs`.
 - `tests/synthdefs.rs` compares each definition with the golden one of its
   name, as bytes, for 1, 2 and 4 channels.
+- A sample player builds for any channel count of the sample, because
+  `DirtPan` takes any count of signals. `core` holds the players of 1 and
+  2 channels. SuperDirt builds the same ones, because its
+  `maxSampleNumChannels` is 2.
+- `midicps` is a private function of the crate, as `sc_midicps` of
+  SuperCollider computes it for an f64. The players and the events share
+  it.
 
 ### The golden files
 
 - `generator/fixtures.scd` writes `tests/fixtures/definitions/`. The files
   `core_1.scsyndef`, `core_2.scsyndef` and `core_4.scsyndef` each hold the
   25 definitions, with the `CombL` delay, from the three core files.
+- The files `players_3_4_1.scsyndef`, `_2` and `_4` each hold the 6
+  players for samples of 3 and 4 channels. The script builds them with
+  `SuperDirt.maxSampleNumChannels` at 4. They are the test of `DirtPan`
+  for more than 2 signals.
 - With the configuration of `generator/sc3_plugins/`, the script writes
   `switch_delay_1.scsyndef`, `_2` and `_4`. Each holds the one definition
   `dirt_delay`.
@@ -410,12 +443,14 @@ sample, `long` with 1 mono sample over 16,777,216 frames, and `x_bd` for
 `bank`.
 
 1. The start: the nodes of both orbits.
-2. Names: `s`, `sound` with `:n`, `n` past the count, the stereo player,
-   the long player, `bank`.
+2. Names: `s`, `sound` with `:n`, `sound` with a text after the colon, `n`
+   past the count, a negative `n`, a fraction as `n`. Also the stereo
+   player, the long player and `bank`.
 3. Time: `lag`, `offset` with a speed, and both.
 4. Span: negative `speed`, `accelerate`, `begin` and `end`, a `begin` that
-   is not 0, `unit` c and s, `loop`, `legato`, `sustain`. Also a sustain
-   under 8 samples, and `timescale` with and without `timescalewin`.
+   is not 0, `unit` c and s, `loop`, `legato`, `sustain`. Also `dur`
+   without `delta`, a sustain under 8 samples, and `timescale` with and
+   without `timescalewin`.
 5. Pitch: `note`, `octave`, `freq`, `midinote`.
 6. Level and place: `gain`, `overgain`, `amp`, an orbit default of `amp`,
    `pan` 0 and 1, `channel`.
@@ -429,7 +464,7 @@ sample, `long` with 1 mono sample over 16,777,216 frames, and `x_bd` for
    leslie parameters, then none.
 9. Cut, as a sequence with times: the same group twice, twice at one
    time, a negative group with the same and with another sample, another
-   group, another orbit.
+   group, another orbit, and `cutAll` from another orbit.
 10. Orbits: orbit 1, and an orbit past the count.
 11. Channels: the same three sounds on instances of 1 and 4 channels.
 
@@ -464,7 +499,7 @@ steps are on `feat/core`.
 | 1 | The scaffold | done |
 | 2 | The generator of the definitions, and its golden files | done |
 | 3 | `DirtGateCutGroup`, `dirt_gate`, `dirt_out`, and the test of byte equality | done |
-| 4 | `DirtPan`, and the sample players | |
+| 4 | `DirtPan`, the sample players, and the golden players of 3 and 4 sample channels | done |
 | 5 | The 12 event effects, and the vowel table | |
 | 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | |
 | 7 | `Sound` | |

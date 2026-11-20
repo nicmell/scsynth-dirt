@@ -1,7 +1,8 @@
 //! The golden files of `tests/fixtures`, as `generator/fixtures.scd` wrote
 //! them with sclang 3.14.1: each definition file reads and writes back to
-//! its own bytes, holds the definitions of its channel count, and fits the
-//! limits of the hosts. `vowels.json` holds the formants of the Vowel quark.
+//! its own bytes, and holds the definitions of its channel count. The core
+//! and delay definitions fit the limits of the hosts. `vowels.json` holds
+//! the formants of the Vowel quark.
 
 mod common;
 
@@ -50,12 +51,23 @@ const CORE_STEMS: [&str; 25] = [
     "leslie",
 ];
 
+/// The names of the sample players of 3 and 4 sample channels, without
+/// their channel count.
+const PLAYER_STEMS: [&str; 6] = [
+    "sample_3_",
+    "sample_4_",
+    "sample_long_3_",
+    "sample_long_4_",
+    "stretchsample_3_",
+    "stretchsample_4_",
+];
+
 /// The formants of one vowel: its `freqs`, its `amps` and its `rqs`.
 type Formants = BTreeMap<String, Vec<f64>>;
 
-/// The names of the core definitions of `channels` channels, sorted.
-fn core_names(channels: u32) -> Vec<String> {
-    let mut names: Vec<String> = CORE_STEMS
+/// The names of the definitions of `stems` for `channels` channels, sorted.
+fn sorted_names(stems: &[&str], channels: u32) -> Vec<String> {
+    let mut names: Vec<String> = stems
         .iter()
         .map(|stem| format!("dirt_{stem}{channels}"))
         .collect();
@@ -109,6 +121,7 @@ fn each_definition_file_writes_back_to_its_bytes() {
     for channels in CHANNELS {
         for name in [
             format!("core_{channels}"),
+            format!("players_3_4_{channels}"),
             format!("switch_delay_{channels}"),
         ] {
             let bytes = common::golden_bytes(&name);
@@ -123,7 +136,23 @@ fn each_definition_file_writes_back_to_its_bytes() {
 fn each_core_file_holds_the_25_definitions_of_its_channel_count_sorted_by_name() {
     for channels in CHANNELS {
         let file = common::golden(&format!("core_{channels}"));
-        assert_eq!(names(&file), core_names(channels), "core_{channels}");
+        assert_eq!(
+            names(&file),
+            sorted_names(&CORE_STEMS, channels),
+            "core_{channels}"
+        );
+    }
+}
+
+#[test]
+fn each_players_file_holds_the_6_players_of_3_and_4_sample_channels_sorted_by_name() {
+    for channels in CHANNELS {
+        let file = common::golden(&format!("players_3_4_{channels}"));
+        assert_eq!(
+            names(&file),
+            sorted_names(&PLAYER_STEMS, channels),
+            "players_3_4_{channels}"
+        );
     }
 }
 
