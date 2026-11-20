@@ -1146,9 +1146,9 @@ The events:
   the crate leaves to the host.
 - The script sees no `/n_end`. So in the scenario of the cut, each sound
   starts before the end of the earlier ones.
-- The tests read `events.json` with the feature `float_roundtrip` of
-  `serde_json`. Without it, some of its floats read 1 unit of the last bit
-  off.
+- The tests read each number of `events.json` from its text, with
+  `str::parse` of Rust. The default parse of `serde_json` reads some of its
+  floats 1 unit of the last bit off.
 
 The generators and the tests take these sources:
 

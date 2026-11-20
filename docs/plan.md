@@ -7,14 +7,6 @@ of version 0.1.
 
 ## Open from version 0.1
 
-### A fact without an owner
-
-- Without the feature `float_roundtrip` of serde_json, 6 of the 2,511
-  floats of `events.json` read 1 unit of the last bit off. The tests read
-  the file with the feature, and `tests/golden_events.rs` checks one of
-  these floats. No test holds the two counts, because the feature is on for
-  every test.
-
 ### Not measured
 
 - No test runs scsynth in real time. The acceptance tests measure `start`
@@ -70,3 +62,7 @@ sibling that leaves the version range of the manifest ends the patch, and
 cargo-deny of sc-app3 then refuses the git source. The crate then needs a
 release with the new range. The pump of sc-app3 does not use the crate
 yet. That use is a plan of sc-app3.
+
+The reader of `events.json` parses each number from its text, because
+cargo unifies features and `float_roundtrip` changes the parse of every
+crate in the workspace.

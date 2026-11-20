@@ -7,8 +7,8 @@ scsynth-osc. Its synth definitions are the definitions of SuperDirt,
 rebuilt with scsynth-synthdef. This file is the operating manual.
 
 The README is the reference of the crate. [docs/plan.md](docs/plan.md)
-holds what is still open after version 0.1: a fact without an owner, what
-no test measures, the release, the later versions and the note on sc-app3.
+holds what is still open after version 0.1: what no test measures, the
+release, the later versions and the note on sc-app3.
 Read both before any work.
 
 ## Ground rules
