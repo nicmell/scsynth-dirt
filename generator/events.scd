@@ -1,5 +1,5 @@
 // The golden events of tests/fixtures: the bundles that SuperDirt sends for
-// the sounds of the scenarios of docs/plan.md, as sclang 3.14.1 builds them
+// the sounds of the scenarios below, as sclang 3.14.1 builds them
 // with no server. Run it from the root of the repository, with absolute
 // paths, since ~/.bin/sclang changes the directory. It writes events.json:
 //
@@ -11,7 +11,7 @@
 // address of the server, and keeps each bundle apart, with its time. The
 // shape of events.json:
 //
-//   {"scenarios": [scenario, ...]}, in the order of the plan
+//   {"scenarios": [scenario, ...]}, in the order of the scenarios below
 //   scenario: {"name", "config": {"channels", "orbits", "first_bus",
 //     "out_bus", "sample_rate"}, "library": [{"name", "samples": [{"buffer",
 //     "frames", "channels", "sample_rate"}, ...]}, ...] in the order of the

@@ -7,13 +7,17 @@
 //! count that the builder refuses, but a player refuses 0 channels with
 //! `NotANumber`. `core` gives the 25 definitions in the load order of
 //! SuperDirt, and sorted by name, they write the bytes of the core file.
+//! For 1, 2 and 4 channels, the sum of the bytes of the definitions, the
+//! largest one and the one with the most wire buffers stay as measured. Up to
+//! 7 channels, each one fits one datagram, and for 8 channels, `dirt_reverb8`
+//! alone does not.
 
 mod common;
 
 use scsynth_dirt::synthdefs::{self, Delay};
 use scsynth_synthdef::{BuildError, SynthDef, write_def_file};
 
-use common::CHANNELS;
+use common::{CHANNELS, MAX_DATAGRAM};
 
 /// A public function of `synthdefs` that builds a definition for a count of
 /// channels.
@@ -94,6 +98,25 @@ const LOAD_ORDER: [&str; 25] = [
 fn core(channels: u32, delay: Delay) -> Vec<SynthDef> {
     synthdefs::core(channels, delay)
         .unwrap_or_else(|error| panic!("core({channels}, {delay:?}): {error}"))
+}
+
+/// The size of `def` as a file of its own, the bytes of its `/d_recv`.
+fn size(def: &SynthDef) -> usize {
+    def.as_bytes()
+        .unwrap_or_else(|error| panic!("{}: {error}", def.name))
+        .len()
+}
+
+/// The names of the definitions of `defs` with the largest `measure`, and that
+/// measure.
+fn largest(defs: &[SynthDef], measure: impl Fn(&SynthDef) -> usize) -> (Vec<&str>, usize) {
+    let most = defs.iter().map(&measure).max().unwrap_or_default();
+    let names = defs
+        .iter()
+        .filter(|def| measure(def) == most)
+        .map(|def| def.name.as_str())
+        .collect();
+    (names, most)
 }
 
 #[test]
@@ -226,6 +249,49 @@ fn each_player_refuses_0_sample_channels_and_a_count_over_65535_with_bad_count()
             );
         }
     }
+}
+
+#[test]
+fn the_definitions_of_1_2_and_4_channels_take_their_measured_bytes_and_wire_buffers() {
+    for (channels, total, (biggest, bytes), (busiest, wires)) in [
+        (
+            1,
+            26_584,
+            ("dirt_stretchsample_2_1", 2_547),
+            ("dirt_stretchsample_2_1", 7),
+        ),
+        (2, 31_265, ("dirt_leslie2", 3_461), ("dirt_leslie2", 10)),
+        (4, 39_779, ("dirt_reverb4", 5_080), ("dirt_leslie4", 11)),
+    ] {
+        let defs = core(channels, Delay::Comb);
+        assert_eq!(defs.iter().map(size).sum::<usize>(), total, "{channels}");
+        assert_eq!(largest(&defs, size), (vec![biggest], bytes), "{channels}");
+        let wire_buffers = |def: &SynthDef| {
+            def.wire_buffers()
+                .unwrap_or_else(|error| panic!("{}: {error}", def.name))
+        };
+        assert_eq!(
+            largest(&defs, wire_buffers),
+            (vec![busiest], wires),
+            "{channels}"
+        );
+    }
+}
+
+#[test]
+fn each_definition_fits_one_datagram_up_to_7_channels_and_dirt_reverb8_alone_does_not() {
+    for channels in 1..=7 {
+        for def in core(channels, Delay::Comb) {
+            assert!(size(&def) <= MAX_DATAGRAM, "{}: {}", def.name, size(&def));
+        }
+    }
+    let defs = core(8, Delay::Comb);
+    let over: Vec<(&str, usize)> = defs
+        .iter()
+        .filter(|def| size(def) > MAX_DATAGRAM)
+        .map(|def| (def.name.as_str(), size(def)))
+        .collect();
+    assert_eq!(over, [("dirt_reverb8", 8_923)]);
 }
 
 #[test]

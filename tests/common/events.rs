@@ -13,7 +13,7 @@ use serde::Deserialize;
 /// The golden events.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct Events {
-    /// The scenarios, in the order of the plan.
+    /// The scenarios, in the order of `generator/events.scd`.
     pub scenarios: Vec<Scenario>,
 }
 

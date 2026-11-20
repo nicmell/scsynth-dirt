@@ -7,8 +7,9 @@ scsynth-osc. Its synth definitions are the definitions of SuperDirt,
 rebuilt with scsynth-synthdef. This file is the operating manual.
 
 The README is the reference of the crate. [docs/plan.md](docs/plan.md)
-holds the plan of version 0.1, which is in work. Read both before any
-work.
+holds what is still open after version 0.1: a fact without an owner, what
+no test measures, the release, the later versions and the note on sc-app3.
+Read both before any work.
 
 ## Ground rules
 
@@ -69,15 +70,11 @@ cargo test --all-features -- --ignored
 its plugins. `SCSYNTH_SC3_PLUGINS` names another folder of the plugins of
 sc3-plugins.
 
-The generators write the golden files of `tests/fixtures`. Run them from
-the root of the repository, with absolute paths, because `~/.bin/sclang`
-changes the directory. If no terminal reads the output of sclang, sclang
-hides it, so a run under `script` shows it. With the first configuration,
-`fixtures.scd` writes the 25 definitions of each channel count, the players
-of 3 and 4 sample channels, and `vowels.json`. With the second, it writes
-the `SwitchDelay` delay of each channel count. `events.scd` writes
-`events.json`, the bundles that SuperDirt sends for the scenarios of the
-plan.
+The generators write the golden files of `tests/fixtures`. The README says
+what each run writes, under Tests. Run them from the root of the
+repository, with absolute paths, because `~/.bin/sclang` changes the
+directory. If no terminal reads the output of sclang, sclang hides it, so a
+run under `script` shows it.
 
 ```bash
 sclang -l "$PWD/generator/sclang_conf.yaml" "$PWD/generator/fixtures.scd"

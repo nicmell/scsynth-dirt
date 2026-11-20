@@ -1,6 +1,6 @@
 //! The golden events of `tests/fixtures/events.json`, as
 //! `generator/events.scd` wrote them with sclang 3.14.1: the scenarios of the
-//! plan in order, each on 2 orbits with the library of the plan. A start
+//! script in order, each on 2 orbits with the library of the script. A start
 //! holds one bundle per orbit with no time, which makes two groups first.
 //! Each bundle of a sound has a time, a sound with a cut sends a first bundle
 //! of its own, and each sound that SuperDirt plays ends with its gate. The
@@ -18,8 +18,8 @@ use common::events::{self, Bundle, Scenario, Sound, Step, Value};
 /// sound with `sustain` 0.004 in the scenario `span`.
 const INEXACT: &str = "0.00076392000000000007";
 
-/// The scenarios of the plan, in order. The scenario of the channels runs on
-/// an instance of 1 channel, then on one of 4.
+/// The scenarios of `generator/events.scd`, in order. The scenario of the
+/// channels runs on an instance of 1 channel, then on one of 4.
 const SCENARIOS: [&str; 12] = [
     "start",
     "names",
@@ -53,7 +53,7 @@ fn cuts(sound: &Sound) -> bool {
 }
 
 #[test]
-fn the_file_holds_the_scenarios_of_the_plan_in_order() {
+fn the_file_holds_the_scenarios_of_the_script_in_order() {
     let names: Vec<String> = events::read()
         .scenarios
         .into_iter()
@@ -63,7 +63,7 @@ fn the_file_holds_the_scenarios_of_the_plan_in_order() {
 }
 
 #[test]
-fn each_scenario_runs_on_2_orbits_with_the_library_of_the_plan() {
+fn each_scenario_runs_on_2_orbits_with_the_library_of_the_script() {
     for scenario in events::read().scenarios {
         let channels = match scenario.name.as_str() {
             "channels_1" => 1,

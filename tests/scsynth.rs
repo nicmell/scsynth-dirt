@@ -9,18 +9,17 @@
 //! Each test acts as a host. It makes the root group of the instance at time
 //! 0, then sends the commands of `start` and loads the samples that it
 //! writes after the first block. It plays its sounds with the epoch 0, and
-//! ends with the bundles of `stop`. NRT mode drops every reply (fact 18), so
-//! the host gives the library a `/b_info` of its own. Each orbit has
-//! `limitertype` 0, and a silent sound opens the monitor of orbit 0 before
-//! the sounds that the test measures (fact 17). scsynth exits with success,
+//! ends with the bundles of `stop`. NRT mode drops every reply, so the host
+//! gives the library a `/b_info` of its own. Each orbit has `limitertype` 0,
+//! and a silent sound opens the monitor of orbit 0 before the sounds that
+//! the test measures (see Traps in the README). scsynth exits with success,
 //! so `stop` freed each synth of the instance, and prints no failure. A
 //! sound of a constant sample comes out at the level of the chain, and its
 //! first sample sits [`ONSET`] frames after the frame of its time. A cut
 //! silences the sound that it cuts. The delay echoes, with `CombL`, and with
 //! `SwitchDelay` and the feature `sc3-plugins`. On 1 channel, a sound is the
 //! sum of the channels of its sample, and the reverb leaves the next orbit
-//! silent (fact 22). On 4 channels, a sound comes out on the channel of its
-//! pan.
+//! silent. On 4 channels, a sound comes out on the channel of its pan.
 
 mod common;
 

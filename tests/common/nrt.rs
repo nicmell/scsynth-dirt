@@ -73,8 +73,7 @@ fn timetag(seconds: f64) -> Timetag {
 
 /// A score of NRT mode: bundles in time order, each written as its size, a
 /// big-endian i32, then its bytes. scsynth ends a score at a time tag that
-/// comes before the one of the entry before it (fact 18), so the score
-/// refuses one.
+/// comes before the one of the entry before it, so the score refuses one.
 #[derive(Debug, Default)]
 pub struct Score {
     /// The entries, as scsynth reads them.

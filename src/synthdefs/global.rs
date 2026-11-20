@@ -283,7 +283,9 @@ fn switch_delay(channels: u32) -> Result<SynthDef, BuildError> {
 /// envelope that rises in 0.01 seconds, and falls in 1 second once `gate`
 /// closes. Then the synth frees itself. It pauses itself as `DirtPause`
 /// does, with a grace time of 4 seconds. The loop has at least the 2
-/// channels of its two `DelayN`, so `dirt_reverb1` writes 2 channels.
+/// channels of its two `DelayN`, so `dirt_reverb1` writes 2 channels. Its
+/// `LocalOut` of 2 channels then writes nothing into its `LocalIn` of 1, so
+/// the loop of `dirt_reverb1` has no feedback.
 ///
 /// # Errors
 ///

@@ -134,7 +134,8 @@ macro_rules! fields {
 }
 
 fields! {
-    /// The tempo, in cycles per second, for the timings of the unit c.
+    /// The tempo, in cycles per second, for the timings of the unit c and for
+    /// a delay with `lock` 1.
     F(cps),
     /// The sound: the name of the folder of its samples.
     S(s),
@@ -146,27 +147,30 @@ fields! {
     F(end),
     /// How fast to play the sample: a negative speed plays it backwards.
     F(speed),
-    /// The stereo panning, from 0 for left to 1 for right.
+    /// The panning, from 0 for left to 1 for right. On more than 2 channels,
+    /// it goes around the circle of the channels.
     F(pan),
-    /// The velocity, unused in libdirt.
+    /// The velocity, which neither libdirt nor [`Dirt::play`](crate::Dirt::play)
+    /// reads.
     F(velocity),
     /// The vowel of the formant filter: a, e, i, o or u.
     S(vowel),
     /// The frequency of the low pass filter, in hertz.
     F(cutoff),
-    /// The resonance of the low pass filter, from 0 to 1.
+    /// The resonance of the low pass filter and of the vowel, from 0 to 1.
     F(resonance),
     /// The change of speed: the end speed is `speed * (1 + accelerate)`.
     F(accelerate),
     /// The wave-shaping distortion.
     F(shape),
-    /// The kriole, unused in libdirt.
+    /// The kriole, which neither libdirt nor [`Dirt::play`](crate::Dirt::play)
+    /// reads.
     I(kriole),
     /// The volume, at the end of the chain of effects.
     F(gain),
     /// The cut group: a sound stops the sounds of its group, if negative those of its sample.
     I(cut),
-    /// How much of the sound to send to the global delay effect.
+    /// The level of the echoes of the global delay effect: its `delayAmp`.
     F(delay),
     /// The delay time of the global delay effect.
     F(delaytime),
@@ -196,7 +200,7 @@ fields! {
     F(hold),
     /// The duration of the release of the volume envelope, in seconds.
     F(release),
-    /// The index of the orbit of the sound in SuperDirt, unused in libdirt.
+    /// The index of the orbit of the sound.
     I(orbit),
 }
 
