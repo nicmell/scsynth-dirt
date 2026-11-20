@@ -120,6 +120,25 @@ in the sources named above.
     more, the `mul` of `DirtPan` has no effect.
 24. A sample player refuses 0 channels with `NotANumber`, not `BadCount`:
     the place of the first signal in `DirtSplayAz` is 0 / 0 there.
+25. At the end of a score, scsynth 3.14.1 unloads its plugins before it
+    frees its nodes. If a synth still lives then, scsynth crashes, after
+    the output file is complete. A score ends with `stop`.
+26. In the first block of NRT mode, the `LocalIn` of scsynth 3.14.1 reads
+    memory that nothing wrote. A reverb made at time 0 starts with garbage
+    in its loop, up to 1e14 on 4 channels. A score sends `start` after
+    time 0.
+27. `dirt_reverb1` has no feedback loop. Its `LocalOut` has 2 channels and
+    its `LocalIn` has 1. With counts that differ, `LocalOut` writes
+    nothing. Its two output channels are equal. SuperDirt has the same
+    definition.
+28. The envelope of a cut runs at control rate. For a cut in the middle of
+    a block, the sound keeps its level to the end of that block, and fades
+    over the next one.
+29. The first sample of a sound sits 1 frame after the frame of its time,
+    because the first sample of the envelope of the gate is 0.
+30. scsynth exits with success after a failure of a command. In NRT mode,
+    a line of its text with `FAILURE`, `ERROR`, `exception` or
+    `could not be opened` tells of one.
 
 ## The design of 0.1
 
@@ -605,10 +624,12 @@ of the host in its place, and sends no such message.
   `play`, with `epoch` 0. The test hands the library a `/b_info` of its
   own, because NRT mode drops the replies.
 - The test sets `limitertype` to 0, and plays one sound first (fact 17).
-- scsynth must exit clean, with no failure line in its output.
+- The score makes the group of the host at time 0, sends `start` after the
+  first block (fact 26), and ends with the bundles of `stop` (fact 25).
+- scsynth must exit clean, with no failure line in its output (fact 30).
 - The onset of a sound sits at `round(t * sample rate) + k`, for a time
-  tag in the middle of a block, with k measured once. A time tag one
-  sample later moves the onset by one sample.
+  tag in the middle of a block, with k measured once: k is 1 (fact 29). A
+  time tag one sample later moves the onset by one sample.
 - A sound of a constant sample comes out at the level that the chain
   predicts.
 - The output is silent after a cut.
@@ -637,7 +658,7 @@ steps are on `feat/core`.
 | 9 | The generator of the events, and its golden file | done |
 | 10 | `Config`, `Dirt::new`, `start`, `stop`, the orbits | done |
 | 11 | `play` and `reply` | done |
-| 12 | The acceptance test | |
+| 12 | The acceptance test | done |
 | 13 | The README, the CHANGELOG, this file | |
 
 A step passes on byte equality for a definition, and on message equality

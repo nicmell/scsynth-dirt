@@ -56,6 +56,19 @@ CI (`.github/workflows/ci.yml`) runs them with `--locked`. CI has no
 Inside the sc-app3 workspace, cargo uses the lock of sc-app3, so a
 `--locked` run needs a standalone clone.
 
+The acceptance tests of `tests/scsynth.rs` are ignored by default, because
+they run the scsynth of the bundle in NRT mode. With the feature
+`sc3-plugins`, the test of `SwitchDelay` also needs the plugins of
+sc3-plugins. CI has no scsynth, so it does not run them.
+
+```bash
+cargo test --all-features -- --ignored
+```
+
+`SCSYNTH` names another scsynth, and `SCSYNTH_PLUGINS` another folder of
+its plugins. `SCSYNTH_SC3_PLUGINS` names another folder of the plugins of
+sc3-plugins.
+
 The generators write the golden files of `tests/fixtures`. Run them from
 the root of the repository, with absolute paths, because `~/.bin/sclang`
 changes the directory. If no terminal reads the output of sclang, sclang

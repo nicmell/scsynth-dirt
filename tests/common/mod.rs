@@ -1,8 +1,10 @@
 //! The golden files of `tests/fixtures`, as the generators of `generator/`
-//! write them with sclang 3.14.1, and the packets of the crate on the wire.
+//! write them with sclang 3.14.1, the packets of the crate on the wire, and
+//! their render in scsynth.
 #![allow(dead_code, reason = "each test file uses a part of this module")]
 
 pub mod events;
+pub mod nrt;
 pub mod wire;
 
 use std::fs;
