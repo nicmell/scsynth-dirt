@@ -1,10 +1,14 @@
 #![doc = include_str!("../README.md")]
 
+#[cfg(feature = "fs")]
+pub mod fs;
+mod library;
 mod sclang;
 mod sound;
 pub mod synthdefs;
 mod vowel;
 
+pub use library::{Library, LibraryError, Sample, SampleInfo};
 pub use sound::{Sound, SoundError, Value};
 pub use synthdefs::Delay;
 pub use vowel::Register;

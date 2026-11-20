@@ -230,8 +230,9 @@ empty range, and a range that starts under 0.
   and return an error.
 - `remove(name)` returns the `/b_free` of each buffer of the name.
 - `reply` takes a reply of scsynth. A `/b_info` gives the frames, the
-  channels and the sample rate of a buffer that waits for them. A `/fail`
-  of `/b_allocRead` that names a buffer marks its sample as failed.
+  channels and the sample rate of a buffer of the library. A `/b_info`
+  without data, or a `/fail` of `/b_allocRead` that names a buffer, marks
+  its sample as failed. The last reply for a buffer wins.
 - `sample(name, n)` gives the sample at index `n`. The index is truncated
   toward 0 and wrapped to the count, so a negative index counts from the
   end. `samples(name)` and `names()` list the content.
@@ -242,8 +243,9 @@ empty range, and a range that starts under 0.
 With the feature `fs`, `fs::list(root)` lists a folder as SuperDirt does.
 Each folder inside it is a name. Its samples are its files with the
 extensions `wav`, `aif`, `aiff` and `aifc`, without regard to case. The
-names and the files come sorted by their bytes. A name or a path that is
-not UTF-8 is an error.
+names and the files come sorted by their bytes. A name or a file that
+starts with a dot stays out, as with the glob of sclang. A link counts as
+what it points to. A name or a path that is not UTF-8 is an error.
 
 ### The orbits
 
@@ -272,8 +274,8 @@ its output bus. `get(name)` reads one of its defaults.
 
 `start` returns one list of `/d_recv` messages, safe to send in order with
 no wait. It also clears the state of the instance: the last parameters of
-the global synths, and the live sounds. For 1, 2 and 4 channels, each
-message stays under 8,192 bytes.
+the global synths, and the live sounds. For 1, 2 and 4 channels and 12
+orbits, each message stays under 8,192 bytes.
 
 1. One `/d_recv` per global definition: monitor, rms, delay, reverb,
    leslie.
@@ -429,6 +431,11 @@ Differences from SuperDirt, for the README:
 - No `smpl` chunk of a WAV file: `metatune` has no effect.
 - A sample that is not loaded drops its sound. SuperDirt can read it at
   the first use.
+- A file that scsynth cannot read keeps its index, as a failed sample. In
+  SuperDirt, sclang reads the header first, and such a file takes no
+  index.
+- sclang has no OSC type for a long, and reads the type `I` as the float
+  infinity. `Sound::from_args` takes a long as a number, and refuses `I`.
 - A sample of more than 2 channels drops its sound, because `start` loads
   the players of 1 and 2 channels. SuperDirt sends a synth whose
   definition scsynth lacks.
@@ -594,7 +601,7 @@ steps are on `feat/core`.
 | 5 | The 12 event effects, and the vowel table | done |
 | 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | done |
 | 7 | `Sound` | done |
-| 8 | `Library`, and the `fs` helper | |
+| 8 | `Library`, and the `fs` helper | done |
 | 9 | The generator of the events, and its golden file | |
 | 10 | `Config`, `Dirt::new`, `start`, `stop`, the orbits | |
 | 11 | `play` and `reply` | |
