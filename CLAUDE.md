@@ -7,8 +7,9 @@ scsynth-osc. Its synth definitions are the definitions of SuperDirt,
 rebuilt with scsynth-synthdef. This file is the operating manual.
 
 The README is the reference of the crate. [docs/plan.md](docs/plan.md)
-holds the plan of version 0.1, which is in work. Read both before any
-work.
+holds what is still open after version 0.1: what no test measures, the
+release, the later versions and the note on sc-app3.
+Read both before any work.
 
 ## Ground rules
 
@@ -55,6 +56,31 @@ CI (`.github/workflows/ci.yml`) runs them with `--locked`. CI has no
 `cargo package` step, because the sibling crates are git dependencies.
 Inside the sc-app3 workspace, cargo uses the lock of sc-app3, so a
 `--locked` run needs a standalone clone.
+
+The acceptance tests of `tests/scsynth.rs` are ignored by default, because
+they run the scsynth of the bundle in NRT mode. With the feature
+`sc3-plugins`, the test of `SwitchDelay` also needs the plugins of
+sc3-plugins. CI has no scsynth, so it does not run them.
+
+```bash
+cargo test --all-features -- --ignored
+```
+
+`SCSYNTH` names another scsynth, and `SCSYNTH_PLUGINS` another folder of
+its plugins. `SCSYNTH_SC3_PLUGINS` names another folder of the plugins of
+sc3-plugins.
+
+The generators write the golden files of `tests/fixtures`. The README says
+what each run writes, under Tests. Run them from the root of the
+repository, with absolute paths, because `~/.bin/sclang` changes the
+directory. If no terminal reads the output of sclang, sclang hides it, so a
+run under `script` shows it.
+
+```bash
+sclang -l "$PWD/generator/sclang_conf.yaml" "$PWD/generator/fixtures.scd"
+sclang -l "$PWD/generator/sc3_plugins/sclang_conf.yaml" "$PWD/generator/fixtures.scd"
+sclang -l "$PWD/generator/sclang_conf.yaml" "$PWD/generator/events.scd"
+```
 
 ## Conventions
 

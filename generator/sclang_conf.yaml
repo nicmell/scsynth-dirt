@@ -1,0 +1,11 @@
+# The core class library of SuperCollider 3.14.1, the classes of SuperDirt
+# and the Vowel quark, without the Extensions folder and without other
+# quarks: `sclang -l "$PWD/generator/sclang_conf.yaml" <script>`.
+includePaths:
+    -   /Applications/SuperCollider.app/Contents/Resources/SCClassLibrary
+    -   /Users/nick/Projects/SuperDirt/classes
+    -   /Users/nick/Projects/Vowel
+excludePaths:
+    []
+postInlineWarnings: false
+excludeDefaultPaths: true
