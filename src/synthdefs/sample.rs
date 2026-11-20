@@ -6,7 +6,7 @@ use scsynth_synthdef::{Arg, BuildError, SynthDef, SynthDefBuilder, UGenInput};
 
 use super::ugens::dirt_pan;
 use super::{arguments, as_array, sum};
-use crate::pitch::midicps;
+use crate::sclang;
 
 /// The definition `dirt_sample_<sample_channels>_<channels>`: the player of
 /// a buffer of `sample_channels` channels. `BufRd` reads the buffer
@@ -291,7 +291,7 @@ fn playback_rate(
             ("dur", sustain.into()),
         ],
     )?;
-    let ratio = builder.binary_op("/", freq, midicps(60.0))?;
+    let ratio = builder.binary_op("/", freq, sclang::midicps(60.0))?;
     builder.binary_op("*", line, ratio)
 }
 

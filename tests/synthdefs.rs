@@ -1,14 +1,17 @@
 //! The definitions of `synthdefs`, against the golden definitions that
 //! sclang 3.14.1 wrote for SuperDirt: each definition has the bytes of the
 //! golden definition of its name, for 1, 2 and 4 channels, and each sample
-//! player for samples of 1 to 4 channels. Each function refuses a count
-//! that the builder refuses, but a player refuses 0 channels with
-//! `NotANumber`.
+//! player for samples of 1 to 4 channels. With the feature `sc3-plugins`,
+//! the delay of `SwitchDelay` has the bytes of its own golden file, and
+//! without it, the builder refuses that delay. Each function refuses a
+//! count that the builder refuses, but a player refuses 0 channels with
+//! `NotANumber`. `core` gives the 25 definitions in the load order of
+//! SuperDirt, and sorted by name, they write the bytes of the core file.
 
 mod common;
 
-use scsynth_dirt::synthdefs;
-use scsynth_synthdef::{BuildError, SynthDef};
+use scsynth_dirt::synthdefs::{self, Delay};
+use scsynth_synthdef::{BuildError, SynthDef, write_def_file};
 
 use common::CHANNELS;
 
@@ -16,8 +19,16 @@ use common::CHANNELS;
 /// channels.
 type Function = fn(u32) -> Result<SynthDef, BuildError>;
 
-/// Each public function of `synthdefs`, with its name.
+/// Each public function of `synthdefs` for a count of channels, with its
+/// name. `dirt_delay` builds the delay of `CombL`.
 const FUNCTIONS: &[(&str, Function)] = &[
+    ("dirt_monitor", synthdefs::dirt_monitor),
+    ("dirt_rms", synthdefs::dirt_rms),
+    ("dirt_delay", |channels| {
+        synthdefs::dirt_delay(channels, Delay::Comb)
+    }),
+    ("dirt_reverb", synthdefs::dirt_reverb),
+    ("dirt_leslie", synthdefs::dirt_leslie),
     ("dirt_gate", synthdefs::dirt_gate),
     ("dirt_out", synthdefs::dirt_out),
     ("dirt_vowel", synthdefs::dirt_vowel),
@@ -49,6 +60,42 @@ const PLAYERS: &[(&str, Player)] = &[
 /// of 1 and 2, and `players_3_4_<n>` those of 3 and 4.
 const SAMPLE_CHANNELS: [u32; 4] = [1, 2, 3, 4];
 
+/// The names of the 25 definitions of `core`, without their channel count,
+/// in the order in which SuperDirt loads them.
+const LOAD_ORDER: [&str; 25] = [
+    "monitor",
+    "rms",
+    "delay",
+    "reverb",
+    "leslie",
+    "sample_1_",
+    "sample_2_",
+    "sample_long_1_",
+    "sample_long_2_",
+    "stretchsample_1_",
+    "stretchsample_2_",
+    "gate",
+    "out",
+    "vowel",
+    "crush",
+    "coarse",
+    "hpf",
+    "bpf",
+    "shape",
+    "lpf",
+    "envelope",
+    "grain_envelope",
+    "pitch_shift",
+    "tremolo",
+    "phaser",
+];
+
+/// The definitions of `core` for `channels` channels and `delay`.
+fn core(channels: u32, delay: Delay) -> Vec<SynthDef> {
+    synthdefs::core(channels, delay)
+        .unwrap_or_else(|error| panic!("core({channels}, {delay:?}): {error}"))
+}
+
 #[test]
 fn each_definition_has_the_bytes_of_sclang_for_each_channel_count() {
     for (name, function) in FUNCTIONS {
@@ -56,6 +103,77 @@ fn each_definition_has_the_bytes_of_sclang_for_each_channel_count() {
             let def =
                 function(channels).unwrap_or_else(|error| panic!("{name}{channels}: {error}"));
             common::assert_golden_bytes(&format!("core_{channels}"), &def);
+        }
+    }
+}
+
+#[cfg(feature = "sc3-plugins")]
+#[test]
+fn the_switch_delay_has_the_bytes_of_sclang_with_sc3_plugins_for_each_channel_count() {
+    for channels in CHANNELS {
+        let def = synthdefs::dirt_delay(channels, Delay::Switch)
+            .unwrap_or_else(|error| panic!("dirt_delay{channels}: {error}"));
+        common::assert_golden_bytes(&format!("switch_delay_{channels}"), &def);
+    }
+}
+
+#[cfg(not(feature = "sc3-plugins"))]
+#[test]
+fn the_switch_delay_without_the_feature_sc3_plugins_is_an_unknown_class() {
+    for channels in CHANNELS {
+        let result = synthdefs::dirt_delay(channels, Delay::Switch);
+        assert!(
+            matches!(&result, Err(BuildError::UnknownClass(class)) if class == "SwitchDelay"),
+            "dirt_delay({channels}, Switch): {:?}",
+            result.map(|def| def.name)
+        );
+    }
+}
+
+#[test]
+fn core_gives_the_25_definitions_in_the_load_order_of_superdirt() {
+    for channels in CHANNELS {
+        let names: Vec<String> = core(channels, Delay::Comb)
+            .into_iter()
+            .map(|def| def.name)
+            .collect();
+        let expected: Vec<String> = LOAD_ORDER
+            .iter()
+            .map(|stem| format!("dirt_{stem}{channels}"))
+            .collect();
+        assert_eq!(names, expected);
+    }
+}
+
+#[test]
+fn core_sorted_by_name_writes_the_bytes_of_the_core_file() {
+    for channels in CHANNELS {
+        let mut defs = core(channels, Delay::Comb);
+        defs.sort_by(|a, b| a.name.cmp(&b.name));
+        let written = write_def_file(&defs).unwrap_or_else(|error| panic!("{error}"));
+        assert!(
+            written == common::golden_bytes(&format!("core_{channels}")),
+            "core({channels}, Comb) differs from core_{channels}.scsyndef"
+        );
+    }
+}
+
+#[cfg(feature = "sc3-plugins")]
+#[test]
+fn core_with_the_switch_delay_differs_in_dirt_delay_alone() {
+    for channels in CHANNELS {
+        let delay = format!("dirt_delay{channels}");
+        let comb = core(channels, Delay::Comb);
+        let switch = core(channels, Delay::Switch);
+        assert_eq!(comb.len(), switch.len());
+        for (comb, switch) in comb.iter().zip(&switch) {
+            assert_eq!(comb.name, switch.name);
+            if switch.name == delay {
+                assert_ne!(comb, switch, "{delay}");
+                common::assert_golden_bytes(&format!("switch_delay_{channels}"), switch);
+            } else {
+                assert_eq!(comb, switch, "{}", comb.name);
+            }
         }
     }
 }

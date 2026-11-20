@@ -6,7 +6,7 @@ use std::f64::consts::PI;
 use scsynth_synthdef::ArgRate::{Ir, Kr};
 use scsynth_synthdef::{Arg, BuildError, SynthDef, SynthDefBuilder, UGenInput};
 
-use super::{arguments, as_array, sum};
+use super::{arguments, as_array, in_ar, sum};
 
 /// The definition `dirt_vowel<channels>`: a vowel. Five band-pass filters
 /// at the formants of `vowelFreqs`, `vowelRqs` and `vowelAmps` shape
@@ -495,22 +495,6 @@ pub fn dirt_phaser(channels: u32) -> Result<SynthDef, BuildError> {
     let signal = builder.binary_op("+", signal, phaserwave)?;
     replace_out(&mut builder, out, signal)?;
     builder.finish()
-}
-
-/// `In.ar(out, numChannels)`: `channels` channels of the bus `out`.
-fn in_ar(
-    builder: &mut SynthDefBuilder,
-    out: &UGenInput,
-    channels: u32,
-) -> Result<UGenInput, BuildError> {
-    builder.ugen(
-        "In",
-        "ar",
-        &[
-            ("bus", out.clone().into()),
-            ("numChannels", f64::from(channels).into()),
-        ],
-    )
 }
 
 /// `ReplaceOut.ar(out, signal)`: `signal` in the place of the channels of

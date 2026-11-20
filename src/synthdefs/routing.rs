@@ -4,8 +4,8 @@
 use scsynth_synthdef::ArgRate::{Ir, Kr};
 use scsynth_synthdef::{Arg, BuildError, SynthDef, SynthDefBuilder};
 
-use super::arguments;
 use super::ugens::dirt_gate_cut_group;
+use super::{arguments, in_ar};
 
 /// The definition `dirt_gate<channels>`: the gate of a sound. It moves
 /// `channels` channels from the bus `in` to the bus `out`, under an envelope
@@ -41,14 +41,7 @@ pub fn dirt_gate(channels: u32) -> Result<SynthDef, BuildError> {
         gain,
         overgain,
     ] = arguments(&builder);
-    let signal = builder.ugen(
-        "In",
-        "ar",
-        &[
-            ("bus", r#in.clone().into()),
-            ("numChannels", num_channels.into()),
-        ],
-    )?;
+    let signal = in_ar(&mut builder, &r#in, channels)?;
     let envelope = builder.env(
         "new",
         &[
@@ -99,7 +92,6 @@ pub fn dirt_gate(channels: u32) -> Result<SynthDef, BuildError> {
 ///
 /// [`BuildError::BadCount`] for 0 channels, or for more than 65,535.
 pub fn dirt_out(channels: u32) -> Result<SynthDef, BuildError> {
-    let num_channels = f64::from(channels);
     let mut builder = SynthDefBuilder::new(
         format!("dirt_out{channels}"),
         vec![
@@ -113,14 +105,7 @@ pub fn dirt_out(channels: u32) -> Result<SynthDef, BuildError> {
         ],
     )?;
     let [out, to, sustain, fade_in_time, fade_time, through, amp] = arguments(&builder);
-    let signal = builder.ugen(
-        "In",
-        "ar",
-        &[
-            ("bus", out.clone().into()),
-            ("numChannels", num_channels.into()),
-        ],
-    )?;
+    let signal = in_ar(&mut builder, &out, channels)?;
     let envelope = builder.env(
         "new",
         &[

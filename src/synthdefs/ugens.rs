@@ -3,7 +3,7 @@
 
 use scsynth_synthdef::{BuildError, SynthDefBuilder, UGenInput};
 
-use super::{as_array, sum};
+use super::{as_array, number, sum};
 
 /// `DirtPan.ar(signal, numChannels, pan, mul)` with the default panning
 /// function of `DirtPan`: the signals of `signal` on `num_channels`
@@ -164,6 +164,45 @@ pub(super) fn dirt_gate_cut_group(
     )
 }
 
+/// `DirtPause.ar(signal, graceTime, pauseImmediately)`: the pause of a
+/// global synth. The synth pauses itself once the sum of the magnitudes of
+/// `signal` stays under 0.0001 for `grace_time` seconds. A trigger of the
+/// control `dirt_resumed` adds 1 to that sum for `grace_time` seconds. With
+/// `pause_immediately` above 0, the synth also pauses itself at its start.
+pub(super) fn dirt_pause(
+    builder: &mut SynthDefBuilder,
+    signal: UGenInput,
+    grace_time: f64,
+    pause_immediately: f64,
+) -> Result<(), BuildError> {
+    let impulse = builder.ugen("Impulse", "kr", &[("freq", 0.0.into())])?;
+    let start = builder.binary_op("*", impulse, pause_immediately)?;
+    builder.ugen("PauseSelf", "kr", &[("in", start.into())])?;
+    let magnitudes = builder.unary_op("abs", as_array(signal))?;
+    let signal = sum(builder, as_array(magnitudes))?;
+    let resumed = builder.ugen(
+        "NamedControl",
+        "tr",
+        &[("name", "dirt_resumed".into()), ("values", 0.0.into())],
+    )?;
+    let grace = builder.ugen(
+        "Trig1",
+        "ar",
+        &[("in", resumed.into()), ("dur", grace_time.into())],
+    )?;
+    let signal = builder.binary_op("+", signal, grace)?;
+    builder.ugen(
+        "DetectSilence",
+        "ar",
+        &[
+            ("in", signal.into()),
+            ("time", grace_time.into()),
+            ("doneAction", 1.0.into()),
+        ],
+    )?;
+    Ok(())
+}
+
 /// `\name.ir(value)`: the named control `name` at scalar rate, with the
 /// default `value`.
 fn named_ir(
@@ -181,13 +220,4 @@ fn named_ir(
 /// `pan.fold(-1, 1)`.
 fn fold(builder: &mut SynthDefBuilder, pan: UGenInput) -> Result<UGenInput, BuildError> {
     builder.send(pan, "fold", &[("lo", (-1.0).into()), ("hi", 1.0.into())])
-}
-
-/// A count of signals, or an index among them, as a number of sclang.
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "a count of signals stays far below 2 ** 53, up to which an f64 holds every integer"
-)]
-fn number(value: usize) -> f64 {
-    value as f64
 }

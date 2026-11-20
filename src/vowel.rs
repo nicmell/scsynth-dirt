@@ -2,10 +2,16 @@
 //! vowels a, e, i, o and u in five voice registers, from `formLib` of
 //! `Vowel.sc`.
 
+use crate::sclang;
+
 /// The voice register of the vowels. The default is the counter tenor, as
 /// in SuperDirt.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
 pub enum Register {
     /// The soprano.
     Soprano,
@@ -52,7 +58,7 @@ pub(crate) fn formants(register: Register, name: &str) -> Option<Formants> {
     let entry = &vowels[VOWELS.iter().position(|&vowel| vowel == name)?];
     Some(Formants {
         freqs: entry.freq.map(f64::from),
-        amps: entry.db.map(|db| 10.0_f64.powf(f64::from(db) * 0.05)),
+        amps: entry.db.map(|db| sclang::dbamp(f64::from(db))),
         rqs: entry.bw.map(|bw| 1.0 / f64::from(bw)),
     })
 }

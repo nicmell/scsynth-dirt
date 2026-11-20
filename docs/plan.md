@@ -113,6 +113,13 @@ in the sources named above.
     reciprocals of its widths (`Vowel.sc`).
 21. cargo-deny counts a git dependency without `version` as a wildcard.
     `cargo package` fails on a git dependency that crates.io lacks.
+22. `dirt_reverb1` writes 2 channels on its effect bus, because its loop
+    takes the 2 delay times of its `DelayN`. In SuperDirt with 1 channel,
+    the second channel lands on the synth bus of the next orbit.
+23. `DirtSplayAz.ar` takes `mul` and never reads it. So on 3 channels or
+    more, the `mul` of `DirtPan` has no effect.
+24. A sample player refuses 0 channels with `NotANumber`, not `BadCount`:
+    the place of the first signal in `DirtSplayAz` is 0 / 0 there.
 
 ## The design of 0.1
 
@@ -127,7 +134,7 @@ in the sources named above.
 | `event` | Private: the port of `DirtEvent`, from a sound to its bundles |
 | `orbit` | The defaults, the nodes, the buses and the state of the global synths of one orbit |
 | `vowel` | `Register`, and the table of the Vowel quark |
-| `pitch` | Private: `midicps` |
+| `sclang` | Private: the arithmetic of sclang on numbers, such as `midicps` and `dbamp` |
 | `synthdefs` | `Delay`, and the definitions: the pseudo-UGens of SuperDirt, the sample players, the routing, the effects, the global synths |
 | `fs` | With the feature `fs`: a folder as SuperDirt lists it |
 
@@ -140,39 +147,65 @@ the public types of the other modules. The crate also re-exports
 `Config` holds the structure of an instance, and nothing that a sound can
 change.
 
-| Field | Meaning |
-| --- | --- |
-| `channels` | The channel count of the orbits, 1 or more |
-| `orbits` | The number of orbits, 1 or more. SuperDirt starts 12. |
-| `root` | The group of the host. The instance makes its nodes inside it, and never frees it. |
-| `fixed_nodes` | The first of `6 * orbits` node ids: for each orbit its group, then its monitor, rms, leslie, reverb and delay |
-| `sound_nodes` | A range of node ids for the groups of the sounds. It starts over at its end. |
-| `first_bus` | The first of `3 * channels * orbits` private audio buses: for each orbit its synth bus, its dry bus, its effect bus |
-| `out_bus` | The output bus of the monitors |
-| `sample_rate` | The sample rate of the server |
-| `delay` | `Delay::Comb` or `Delay::Switch`. `Switch` needs the feature `sc3-plugins`. |
-| `register` | The voice register of the vowels. The default is the counter tenor, as in SuperDirt. |
-| `epoch` | The seconds between the OSC epoch and time 0 of `when`: 2,208,988,800 for Unix time, 0 for a score of `scsynth -N` |
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `channels` | `u32` | The channel count of the orbits, 1 or more |
+| `orbits` | `u32` | The number of orbits, 1 or more. SuperDirt starts 12. |
+| `root` | `NodeId` | The group of the host. The instance makes its nodes inside it, and never frees it. |
+| `fixed_nodes` | `i32` | The first of `6 * orbits` node ids: for each orbit its group, then its monitor, rms, leslie, reverb and delay |
+| `sound_nodes` | `Range<i32>` | The node ids for the groups of the sounds. They start over at the end of the range. |
+| `first_bus` | `u32` | The first of the private audio buses: for each orbit its synth bus, its dry bus, its effect bus. An orbit takes `3 * channels` of them, and 4 for 1 channel. |
+| `out_bus` | `u32` | The first of the `channels` output buses of the monitors |
+| `sample_rate` | `f64` | The sample rate of the server |
+| `delay` | `Delay` | The delay line of the orbits. `Switch` needs the feature `sc3-plugins`. |
+| `register` | `Register` | The voice register of the vowels |
+| `epoch` | `f64` | The seconds between the OSC epoch and time 0 of `when`: 2,208,988,800 for Unix time, 0 for a score of `scsynth -N` |
 
-`Dirt::new` refuses a configuration whose counts are 0, whose ranges
-overlap or are too short, or whose delay needs a missing feature.
+`Config` is a struct of public fields, with no default. With the feature
+`serde`, it reads and writes.
+
+The buses of an orbit follow each other: the synth bus, the dry bus, then
+the effect bus. For 1 channel, the effect bus has a second channel that
+no synth reads (fact 22). The buses of the next orbit come after it.
+
+`Dirt::new(config)` builds the 25 definitions once and keeps them, so
+`start` cannot fail. It returns a `ConfigError` for each of these:
+
+- A count of 0, or a count that the builder of a definition refuses.
+- A `Delay::Switch` without the feature `sc3-plugins`.
+- A node id under 1 in `fixed_nodes` or `sound_nodes`, or an empty
+  `sound_nodes`.
+- Node ids that overlap: the fixed ones, the ones of the sounds, and
+  `root`.
+- Output buses that overlap the private buses.
+- A range of ids or buses that passes the largest i32.
+- A `sample_rate` that is not a finite number above 0, or an `epoch` that
+  is not finite.
 
 ### Sound
 
-A `Sound` is an optional `when`, in seconds, and an ordered set of
-parameters. A `Value` is a number (f64) or a text. A parameter that is not
-set stays out. In SuperDirt, a parameter that the sound holds is on.
+A `Sound` is an optional `when`, in seconds, and a set of parameters by
+name. A `Value` is a number (f64) or a text. A parameter that is not set
+stays out. In SuperDirt, a parameter that the sound holds is on.
 
-- `Sound::default()` is empty.
-- `set(name, value)` sets any parameter. A second `set` of a name replaces
-  its value.
-- Each of the 32 fields of libdirt is a setter by its name. The list
-  follows.
+- `Sound::new()` and `Sound::default()` are empty.
+- `set(name, value)` sets any parameter in place. `with(name, value)` does
+  the same in a chain. A second value of a name replaces the first.
+- `get(name)` reads a parameter, and `remove(name)` takes it out.
+  `parameters()` gives the pairs in the order of their names.
+- `at(when)` sets `when` in a chain, and `set_when` in place. `when()`
+  reads it.
+- Each of the 32 fields of libdirt is a setter in a chain, by its name and
+  with its type in libdirt: a float is an f64, an int an i32, a string a
+  text. `loop` is a keyword of Rust, so its setter is `r#loop`. A setter
+  stores its value, and no default of libdirt applies. The list follows.
 - `Sound::from_args` reads the arguments of a `/dirt/play` message, which
-  are pairs of a name and a value. A name has the type tag `s` or `S`. A
-  value has one of the type tags `i`, `f`, `h`, `d`, `s`, `S`, `T` and
-  `F`. It refuses an odd count, a name that is no text, and a value of
-  another type.
+  are pairs of a name and a value. A name is a string. An int, a float, a
+  double or a long gives a number. A string gives a text. True gives 1,
+  and false 0. It refuses an odd count, a name that is no string, and a
+  value of another type. It leaves `when` out.
+- With the feature `serde`, `Sound` and `Value` read and write. A `Value`
+  is a bare number or a bare string.
 
 ```text
 cps s offset begin end speed pan velocity vowel cutoff resonance
@@ -183,25 +216,34 @@ orbit
 
 ### Library
 
-A `Library` maps a name to its samples, in order. It takes its buffer
-numbers from a range of the host.
+A `Library` maps a name to its samples, in order. `Library::new(buffers)`
+takes the range of buffer numbers that the host gives it. It refuses an
+empty range, and a range that starts under 0.
 
-- `add(name, paths)` replaces the samples of a name, and `append` adds to
-  them. Each returns one `/b_allocRead buffer path 0 -1` per file, with
-  `/b_query buffer` as its completion, and the `/b_free` of each buffer
-  that it replaced.
-- `reply` takes a reply of scsynth. A `/b_info` gives the frames, the
-  channels and the sample rate of a buffer. A `/fail` of `/b_allocRead`
-  marks its buffer as failed.
+- `add(name, paths)` replaces the samples of a name. It returns the
+  `/b_free` of each buffer that it replaced, then one
+  `/b_allocRead buffer path 0 -1` per path, with `/b_query buffer` as its
+  completion. A number that it freed can serve again in the same call.
+- `append(name, paths)` adds to the samples of a name, with the same
+  `/b_allocRead` messages.
+- If the range has too few free numbers, `add` and `append` change nothing
+  and return an error.
 - `remove(name)` returns the `/b_free` of each buffer of the name.
-- `sample(name, n)` gives the sample at index `n`, truncated to a whole
-  number and wrapped to the count.
-- A sample plays only after the library holds its `/b_info`.
+- `reply` takes a reply of scsynth. A `/b_info` gives the frames, the
+  channels and the sample rate of a buffer that waits for them. A `/fail`
+  of `/b_allocRead` that names a buffer marks its sample as failed.
+- `sample(name, n)` gives the sample at index `n`. The index is truncated
+  toward 0 and wrapped to the count, so a negative index counts from the
+  end. `samples(name)` and `names()` list the content.
+- A `Sample` gives its buffer and its path. Once the library holds its
+  `/b_info`, it also gives its frames, its channels and its sample rate. A
+  sample plays only then.
 
-With the feature `fs`, a helper lists a folder as SuperDirt does. Each
-folder inside it is a name. Its samples are its files with the extensions
-`wav`, `aif`, `aiff` and `aifc`, without regard to case. They come sorted
-by the bytes of their paths.
+With the feature `fs`, `fs::list(root)` lists a folder as SuperDirt does.
+Each folder inside it is a name. Its samples are its files with the
+extensions `wav`, `aif`, `aiff` and `aifc`, without regard to case. The
+names and the files come sorted by their bytes. A name or a path that is
+not UTF-8 is an error.
 
 ### The orbits
 
@@ -222,12 +264,16 @@ from the defaults of its orbit. A sample gives `note` 0. So a sample plays
 at the frequency of note 60, unless the sound sets `note`, `midinote` or
 `freq`.
 
-The getters of an orbit give its group, its five global synths, its three
-buses and its output bus.
+`Dirt::orbit(index)` gives an orbit, or nothing past the count. The getters
+of an orbit give its group, its five global synths, its three buses and
+its output bus. `get(name)` reads one of its defaults.
 
 ### start and stop
 
-`start` returns one list of packets, safe to send in order with no wait.
+`start` returns one list of `/d_recv` messages, safe to send in order with
+no wait. It also clears the state of the instance: the last parameters of
+the global synths, and the live sounds. For 1, 2 and 4 channels, each
+message stays under 8,192 bytes.
 
 1. One `/d_recv` per global definition: monitor, rms, delay, reverb,
    leslie.
@@ -244,7 +290,7 @@ buses and its output bus.
 `definitions` gives the 25 definitions, for a host that loads them in
 another way. `stop` returns, per orbit, one bundle with the immediate time
 tag: `/error -1`, `/n_free` of the group and of the five synths,
-`/error -2`. It clears the state of the global synths and the cut groups.
+`/error -2`. It clears the same state as `start`.
 
 ### play
 
@@ -259,6 +305,7 @@ It returns the bundles of the sound, or the reason of a drop:
 - A sustain under 8 samples.
 - A parameter of the wrong kind. SuperDirt throws on a text in the place
   of a number.
+- A time that is not finite, or under 0 with `epoch`.
 
 1. The name. Without `s`, the text of `sound` splits at `:`. Its first
    part is the name. Its second part gives `n`: the number at its start,
@@ -295,8 +342,10 @@ It returns the bundles of the sound, or the reason of a drop:
 6. With `channel`, `pan` gains `channel / channels`. Then `pan` is
    `pan * 2 - 1`. `delayAmp` is `delay`, or 0.
 7. The time of the sound is `when + lag + offset * |speed|`, with the
-   speed of step 4. Its time tag adds `epoch`. Without `when`, the time
-   tag is the immediate one.
+   speed of step 4. Its time tag adds `epoch`. It holds the whole seconds
+   modulo 2^32, and the fraction in units of 2^-32, rounded down. Without
+   `when`, the time tag is the immediate one, and `lag` and `offset` have
+   no effect.
 8. With a `cut` that is not 0, a first bundle holds `/error -1`. Then it
    holds `/n_set node cut_gate 0` for each live sound that passes these
    tests:
@@ -316,8 +365,8 @@ It returns the bundles of the sound, or the reason of a drop:
      `/n_set id pauseImmediately 0 dirt_resumed 1`.
    - Then one `/n_set` names each parameter whose value differs from the
      last sound of the orbit. A parameter that has no value now is 0.
-   - `/g_new group 1 orbit_group`, with the next id of `sound_nodes`. With
-     a `cut` that is not 0, the group joins the live sounds.
+   - `/g_new group 1 orbit_group`, with the next id of `sound_nodes` that
+     no live sound holds. The group joins the live sounds.
    - The source: `/s_new name -1 1 group`, then the arguments `bufnum`,
      `sustain`, `speed`, `freq`, `endSpeed`, `begin`, `end`, `pan` and
      `out`. The name is `dirt_sample_<sample channels>_<channels>`, with
@@ -356,8 +405,18 @@ It returns the bundles of the sound, or the reason of a drop:
 | tremolo | `tremolorate` | `dirt_tremolo` | `tremolorate`, `tremolodepth`, `out` |
 | phaser | `phaserrate` | `dirt_phaser` | `phaserrate`, `phaserdepth`, `out` |
 
-A live sound leaves the cut groups at its `/n_end`, which `reply` takes.
-It also leaves them once a later sound starts after its end.
+The instance keeps a list of the live sounds. Each entry holds a group, an
+orbit, a cut group, a buffer, a `when` and an end. The end is the time of
+the sound plus `fadeInTime`, `sustain` and `fadeTime`. A sound without
+`when` has no end.
+
+- A sound leaves the list at its `/n_end`, which `reply` takes.
+- A sound also leaves the list once a later sound starts after its end.
+- If every id of `sound_nodes` is live, the oldest live sound leaves the
+  list, and its id serves again.
+
+In the messages, a node id, a bus and a buffer number are ints. A
+parameter of a sound is a float.
 
 Differences from SuperDirt, for the README:
 
@@ -373,6 +432,9 @@ Differences from SuperDirt, for the README:
 - A sample of more than 2 channels drops its sound, because `start` loads
   the players of 1 and 2 channels. SuperDirt sends a synth whose
   definition scsynth lacks.
+- For 1 channel, the effect bus of an orbit has 2 channels. In SuperDirt,
+  the reverb of 1 channel also writes the synth bus of the next orbit
+  (fact 22).
 
 ### The definitions
 
@@ -408,9 +470,18 @@ count. Their names keep the form of SuperDirt: `dirt_gate2`,
   `DirtPan` takes any count of signals. `core` holds the players of 1 and
   2 channels. SuperDirt builds the same ones, because its
   `maxSampleNumChannels` is 2.
-- `midicps` is a private function of the crate, as `sc_midicps` of
-  SuperCollider computes it for an f64. The players and the events share
-  it.
+- `sclang::midicps` is a private function of the crate, as `sc_midicps`
+  of SuperCollider computes it for an f64. The players and the events
+  share it.
+- `Delay` is `Comb` or `Switch`, and `Comb` is the default.
+  `dirt_delay(channels, delay)` builds the delay of its kind. Without the
+  feature `sc3-plugins`, `Delay::Switch` gives the error of the builder
+  for a class that it lacks.
+- `core` returns its definitions in the load order of SuperDirt. The
+  global ones come first: monitor, rms, delay, reverb, leslie. Then come
+  the ones of a sound, in the order of `core-synths.scd`.
+- With the feature `serde`, each enum of the crate names its variants in
+  snake case, as scsynth-osc does.
 
 ### The golden files
 
@@ -433,6 +504,13 @@ count. Their names keep the form of SuperDirt: `dirt_gate2`,
   each sound. Every bundle stays apart, with its time. A class of
   `generator/classes/` takes the place of the address of the server, and
   records.
+- The generator gives each event its `when` as `timeStamp` and as
+  `latency`. So the time of a recorded bundle is
+  `when + lag + offset * |speed|`. The test compares it with the time tag
+  of the crate at `epoch` 0.
+- In `events.json`, a message is its address and its arguments. An
+  Integer and a Float stay apart. A symbol or a string is a string, and an
+  array is a list.
 - Both generators fail unless sclang is 3.14.1 and the clones of SuperDirt
   and Vowel are at their commits. Both set `Server.default` to their own
   server object, and boot nothing.
@@ -501,7 +579,7 @@ steps are on `feat/core`.
 | 3 | `DirtGateCutGroup`, `dirt_gate`, `dirt_out`, and the test of byte equality | done |
 | 4 | `DirtPan`, the sample players, and the golden players of 3 and 4 sample channels | done |
 | 5 | The 12 event effects, and the vowel table | done |
-| 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | |
+| 6 | `DirtPause`, the 5 global definitions, and `synthdefs::core` | done |
 | 7 | `Sound` | |
 | 8 | `Library`, and the `fs` helper | |
 | 9 | The generator of the events, and its golden file | |

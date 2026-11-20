@@ -1,9 +1,10 @@
 #![doc = include_str!("../README.md")]
 
-mod pitch;
+mod sclang;
 pub mod synthdefs;
 mod vowel;
 
+pub use synthdefs::Delay;
 pub use vowel::Register;
 
 /// The OSC protocol of scsynth: the types of the packets that this crate returns.
